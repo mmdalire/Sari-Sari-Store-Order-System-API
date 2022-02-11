@@ -5,7 +5,9 @@ import mongoose from "mongoose";
 
 import HttpError from "./model/http-error.js";
 
+import categoryRoute from "./routes/category-route.js";
 import customerRoute from "./routes/customer-route.js";
+import productRoute from "./routes/product-route.js";
 import userRoute from "./routes/user-route.js";
 dotenv.config();
 
@@ -18,6 +20,8 @@ app.use(cors());
 //Routes
 app.use("/api/users", userRoute);
 app.use("/api/customers", customerRoute);
+app.use("/api/categories", categoryRoute);
+app.use("/api/products", productRoute);
 app.use((req, res, next) => {
 	return next(new HttpError("Could not found this route!", 404));
 });

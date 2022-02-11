@@ -15,6 +15,23 @@ export const signup = async (req, res, next) => {
 		return next(new HttpError(error, 422));
 	}
 
+	//Check if the emails exists
+	let emailExists;
+	try {
+		emailExists = await User.findOne({ email: req.body.email }).exec();
+	} catch (err) {
+		return next(new Error("Cannot create user! Please try again!", 500));
+	}
+
+	if (emailExists) {
+		return next(
+			new Error(
+				"An account with this email already exists! Choose a different email address!",
+				400
+			)
+		);
+	}
+
 	//Encrypt password
 	let hashedPassword;
 	const salt = 12;
@@ -28,12 +45,12 @@ export const signup = async (req, res, next) => {
 
 	//Save user to db
 	const user = new User({
-		firstName: req.body.firstName,
-		lastName: req.body.lastName,
-		email: req.body.email,
-		gender: req.body.gender,
+		firstName: req.body.firstName.trim().toUpperCase(),
+		lastName: req.body.lastName.trim().toUpperCase(),
+		email: req.body.email.trim().toLowerCase(),
+		gender: req.body.gender.trim().toLowerCase(),
 		birthdate: req.body.birthdate,
-		phoneNumber: req.body.phoneNumber,
+		phoneNumber: req.body.phoneNumber.trim(),
 		password: hashedPassword,
 	});
 

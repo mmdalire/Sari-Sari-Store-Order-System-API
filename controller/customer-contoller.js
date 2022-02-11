@@ -38,13 +38,13 @@ export const createCustomer = async (req, res, next) => {
 	//Save customer information
 	customer = new Customer({
 		customerNo: customerNumber,
-		firstName: req.body.firstName,
-		lastName: req.body.lastName,
-		middleInitial: req.body.middleInitial,
-		email: req.body.email,
-		phoneNumber: req.body.phoneNumber,
+		firstName: req.body.firstName.trim().toUpperCase(),
+		lastName: req.body.lastName.trim().toUpperCase(),
+		middleInitial: req.body.middleInitial.trim().toUpperCase(),
+		email: req.body.email.trim().toLowerCase(),
+		phoneNumber: req.body.phoneNumber.trim(),
 		birthdate: req.body.birthdate,
-		address: req.body.address,
+		address: req.body.address.trim(),
 		userId: req.userData.userId,
 	});
 
@@ -63,23 +63,38 @@ export const createCustomer = async (req, res, next) => {
 };
 
 export const getAllCustomers = async (req, res, next) => {
-	//Server pagination
-	const { limit = 10, page = 1 } = req.query;
+	//Server searching and pagination
+	const { limit = 10, page = 1, search = "" } = req.query;
+	const findParameters = { userId: req.userData.userId, isActive: true };
+
+	if (search) {
+		findParameters.$or = [
+			{ customerNo: new RegExp(`${search.toUpperCase()}`) },
+			{ firstName: new RegExp(`${search.toUpperCase()}`) },
+			{ lastName: new RegExp(`${search.toUpperCase()}`) },
+			{ middleInitial: new RegExp(`${search.toUpperCase()}`) },
+		];
+	}
+
+	//Filtering
+	if ("isBlacklisted" in req.query) {
+		findParameters.isBlacklisted = true;
+	}
 
 	//Retrieve all customers
 	let customers;
 	try {
-		customers = await Customer.find(
-			{ userId: req.userData.userId, isActive: true },
-			{
-				customerNo: 1,
-				firstName: 1,
-				middleInitial: 1,
+		customers = await Customer.find(findParameters, {
+			customerNo: 1,
+			firstName: 1,
+			middleInitial: 1,
+			lastName: 1,
+			createdDate: 1,
+			isBlacklisted: 1,
+		})
+			.sort({
 				lastName: 1,
-				createdDate: 1,
-				isBlacklisted: 1,
-			}
-		)
+			})
 			.limit(limit)
 			.skip((page - 1) * limit)
 			.exec();
@@ -131,6 +146,10 @@ export const editCustomer = async (req, res, next) => {
 	}
 
 	//Update customer
+	req.body.firstName = req.body.firstName.trim().toUpperCase();
+	req.body.lastName = req.body.lastName.trim().toUpperCase();
+	req.body.middleInitial = req.body.middleInitial.trim().toUpperCase();
+	req.body.email = req.body.email.trim().toLowerCase();
 	req.body.updatedDate = Date.now();
 
 	try {
