@@ -8,16 +8,48 @@ export const capitalizeFirst = (data) => {
 };
 
 /**
+ * @desc Make the contents of an array in uppercase
+ * @param {array} data - If array, make all elements in uppercase
+ * @returns {array}
+ */
+export const makeUppercaseInArray = (data) => {
+	return data.map((d) => {
+		for (let key in d) {
+			if (typeof d[key] === "string") {
+				d[key] = d[key].trim().toUpperCase();
+			}
+		}
+
+		return d;
+	});
+};
+
+/**
  * @desc Reformat JOI errors into more human readable format
  * @param {object} error - The raw error provided by JOI
  * @returns {string}
  */
 export const reformatJoiError = (error) => {
 	const details = error.details[0];
-
 	const message = details.message.split('"').pop();
-	const fieldName = capitalizeFirst(details.path.pop());
-	return `${fieldName}${message}!`;
+
+	let fieldName;
+	//If the error is within an array of objects (indicates the incorrect field in the object)
+	if (details.path.length > 2) {
+		fieldName = `${capitalizeFirst(details.path.pop())} in ${
+			details.path[0]
+		}`;
+	}
+	//If the error is within the array itself
+	else if (details.path.length === 2) {
+		fieldName = capitalizeFirst(details.path[0]);
+	}
+	//If any primitive types
+	else {
+		fieldName = capitalizeFirst(details.path.pop());
+	}
+
+	return `'${fieldName}'${message}!`;
 };
 
 /**
@@ -29,6 +61,7 @@ export const reformatJoiError = (error) => {
 export const generateNumber = (transaction = "", latestNumber = "") => {
 	const transactionPrefixes = {
 		customer: "CRM",
+		po: "PONO",
 	};
 	const numberOfPaddings = 4;
 
@@ -46,8 +79,11 @@ export const generateNumber = (transaction = "", latestNumber = "") => {
 	}
 
 	//Change year and month whenever which one of them changes according to date today
-	let year = parseInt(latestNumber.substring(3, 7));
-	let month = parseInt(latestNumber.substring(7, 9));
+	let prefixLength = transactionPrefixes[transaction].length;
+	let year = parseInt(latestNumber.substring(prefixLength, prefixLength + 4));
+	let month = parseInt(
+		latestNumber.substring(prefixLength + 4, prefixLength + 6)
+	);
 	let count = latestNumber.split("-").pop();
 
 	if (year !== new Date().getFullYear()) {

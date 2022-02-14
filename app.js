@@ -7,6 +7,7 @@ import HttpError from "./model/http-error.js";
 
 import categoryRoute from "./routes/category-route.js";
 import customerRoute from "./routes/customer-route.js";
+import orderRoute from "./routes/order-route.js";
 import productRoute from "./routes/product-route.js";
 import userRoute from "./routes/user-route.js";
 dotenv.config();
@@ -21,6 +22,7 @@ app.use(cors());
 app.use("/api/users", userRoute);
 app.use("/api/customers", customerRoute);
 app.use("/api/categories", categoryRoute);
+app.use("/api/orders", orderRoute);
 app.use("/api/products", productRoute);
 app.use((req, res, next) => {
 	return next(new HttpError("Could not found this route!", 404));

@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 
 import HttpError from "../model/http-error.js";
 import Category from "../model/category-model.js";
+import Product from "../model/product-model.js";
 
 import { categoryValidation } from "../util/category-validate.js";
 
@@ -101,14 +102,64 @@ export const editCategory = async (req, res, next) => {
 		return next(new HttpError("Unauthorized access!", 401));
 	}
 
+	//Check if a product has used this category
+	let existingProduct;
+	try {
+		let category = await Category.findById(categoryId).exec();
+		existingProduct = await Product.findOne({
+			category: category.name,
+			isActive: true,
+			userId: mongoose.Types.ObjectId(req.userData.userId),
+		}).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot update this category. Please try again later!",
+				500
+			)
+		);
+	}
+
+	if (existingProduct) {
+		return next(
+			new HttpError(
+				"Cannot update this category since there are product/s using this",
+				422
+			)
+		);
+	}
+
+	//Check if the code exists
+	let codeExists;
+	try {
+		codeExists = await Category.findOne({
+			code: req.body.code.toUpperCase(),
+			userId: mongoose.Types.ObjectId(req.userData.userId),
+		}).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot create category. Please try again later!",
+				500
+			)
+		);
+	}
+
+	if (codeExists) {
+		return next(
+			new HttpError("This code already exists! Choose another code!", 422)
+		);
+	}
+
 	//Server side validation
-	const error = categoryValidation(req.body, "update");
+	const error = categoryValidation(req.body);
 	if (error) {
 		return next(new HttpError(error, 422));
 	}
 
 	//Update the category
 	req.body.name = req.body.name.trim().toUpperCase();
+	req.body.code = req.body.code.trim().toUpperCase();
 	req.body.updatedDate = Date.now();
 
 	try {
@@ -138,6 +189,33 @@ export const deleteCategory = async (req, res, next) => {
 		await Category.ownershipValidation(req.userData.userId, categoryId);
 	} catch (err) {
 		return next(new HttpError("Unauthorized access!", 401));
+	}
+
+	//Check if a product has used this category
+	let existingProduct;
+	try {
+		let category = await Category.findById(categoryId).exec();
+		existingProduct = await Product.findOne({
+			category: category.name,
+			isActive: true,
+			userId: mongoose.Types.ObjectId(req.userData.userId),
+		}).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot delete this category. Please try again later!",
+				500
+			)
+		);
+	}
+
+	if (existingProduct) {
+		return next(
+			new HttpError(
+				"Cannot update this category since there are product/s using this",
+				422
+			)
+		);
 	}
 
 	//Update the category to be inactive ONLY (NOT delete)
