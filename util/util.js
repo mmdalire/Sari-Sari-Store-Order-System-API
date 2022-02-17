@@ -62,6 +62,7 @@ export const generateNumber = (transaction = "", latestNumber = "") => {
 	const transactionPrefixes = {
 		customer: "CRM",
 		po: "PONO",
+		prt: "PRTNO",
 	};
 	const numberOfPaddings = 4;
 

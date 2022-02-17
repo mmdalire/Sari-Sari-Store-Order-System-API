@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 
 import HttpError from "../model/http-error.js";
+import Order from "../model/order-model.js";
 import Product from "../model/product-model.js";
 
 import { productValidation } from "../util/product-validate.js";
@@ -125,6 +126,9 @@ export const getProduct = async (req, res, next) => {
 
 export const editProduct = async (req, res, next) => {
 	const productId = req.params.productId;
+	let product;
+	let orders;
+	let allowProductInfoEdit = true;
 
 	//Ownership validation
 	try {
@@ -133,19 +137,61 @@ export const editProduct = async (req, res, next) => {
 		return next(new HttpError("Unauthorized access!", 401));
 	}
 
+	//Get the reference product
+	try {
+		product = await Product.findById(productId).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot update this product. Please try again later!",
+				500
+			)
+		);
+	}
+
+	//Check if an order has used this product
+	try {
+		orders = await Order.findOne({
+			"products.code": product.code,
+			userId: req.userData.userId,
+		}).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot update this product. Please try again later!",
+				500
+			)
+		);
+	}
+
+	//If there are any orders that uses this product, product's main info cannot be changed (name, code, etc)
+	//Allow edit for that product ONLY when restocking (quantity) and change for price and cost
+	if (orders) {
+		allowProductInfoEdit = false;
+	}
+
 	//Server validation
-	const error = productValidation(req.body);
+	const error = productValidation(req.body, "update", allowProductInfoEdit);
 	if (error) {
 		return next(new HttpError(error, 422));
 	}
 
 	//Update product
-	req.body.name = req.body.name.trim().toUpperCase();
-	req.body.category = req.body.category.trim().toUpperCase();
-	req.body.code = req.body.code.trim().toUpperCase();
+	if (allowProductInfoEdit) {
+		req.body.name = req.body.name.trim().toUpperCase();
+		req.body.category = req.body.category.trim().toUpperCase();
+		req.body.code = req.body.code.trim().toUpperCase();
+		req.body.type = req.body.type.trim();
+		req.body.unit = req.body.unit ? req.body.unit.trim() : null;
+	} else {
+		delete req.body.name;
+		delete req.body.category;
+		delete req.body.code;
+		delete req.body.type;
+		delete req.body.unit;
+	}
+
 	req.body.description = req.body.description.trim();
-	req.body.type = req.body.type.trim();
-	req.body.unit = req.body.unit ? req.body.unit.trim() : null;
 	req.body.updatedDate = Date.now();
 
 	try {
@@ -167,12 +213,51 @@ export const editProduct = async (req, res, next) => {
 
 export const deleteProduct = async (req, res, next) => {
 	const productId = req.params.productId;
+	let product;
+	let orders;
 
 	//Ownership validation
 	try {
 		await Product.ownershipValidation(req.userData.userId, productId);
 	} catch (err) {
 		return next(new HttpError("Unauthorized access!", 401));
+	}
+
+	//Get the reference product
+	try {
+		product = await Product.findById(productId).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot delete this product. Please try again later!",
+				500
+			)
+		);
+	}
+
+	//Check if an order has used this product
+	try {
+		orders = await Order.findOne({
+			"products.code": product.code,
+			userId: req.userData.userId,
+		}).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot delete this product. Please try again later!",
+				500
+			)
+		);
+	}
+
+	//If there are any orders that uses this product, deletion is NOT allowed
+	if (orders) {
+		return next(
+			new HttpError(
+				"Cannot delete this product since there are order/s using this",
+				422
+			)
+		);
 	}
 
 	//Update the product to be inactive ONLY (NOT delete)

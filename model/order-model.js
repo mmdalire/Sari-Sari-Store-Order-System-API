@@ -34,7 +34,7 @@ const orderSchema = new mongoose.Schema({
 			},
 		},
 	],
-	// prtIds: [{ type: mongoose.Types.ObjectId, ref: "returns" }],
+	prtIds: [{ type: mongoose.Types.ObjectId, ref: "returns" }],
 	credit: {
 		type: Number,
 		default: 0,

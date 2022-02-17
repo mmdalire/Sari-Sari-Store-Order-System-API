@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import HttpError from "../model/http-error.js";
 import Order from "../model/order-model.js";
 import Product from "../model/product-model.js";
+import PurchaseReturn from "../model/purchase-return-model.js";
 
 import { orderValidation } from "../util/order-validate.js";
 import { generateNumber, makeUppercaseInArray } from "../util/util.js";
@@ -165,6 +166,7 @@ export const getAllOrders = async (req, res, next) => {
 		const isActiveStage = {
 			$match: {
 				isActive: true,
+				userId: mongoose.Types.ObjectId(req.userData.userId),
 			},
 		};
 		pipeline.push(isActiveStage);
@@ -188,6 +190,9 @@ export const getAllOrders = async (req, res, next) => {
 				},
 				customer: {
 					$first: "$customer",
+				},
+				prtIds: {
+					$first: "$prtIds",
 				},
 				totalPrice: {
 					$sum: {
@@ -232,6 +237,7 @@ export const getAllOrders = async (req, res, next) => {
 					lastName: "$customer.lastName",
 					firstName: "$customer.firstName",
 				},
+				prtIds: 1,
 				totalPrice: 1,
 				totalCost: 1,
 				totalProducts: 1,
@@ -241,6 +247,71 @@ export const getAllOrders = async (req, res, next) => {
 			},
 		};
 		pipeline.push(displayStage);
+
+		const lookupPrtStage = {
+			$lookup: {
+				from: "purchase_returns",
+				localField: "prtIds",
+				foreignField: "_id",
+				as: "purchaseReturns",
+			},
+		};
+		pipeline.push(lookupPrtStage);
+
+		const unwindPrtStage = {
+			$unwind: {
+				path: "$purchaseReturns",
+				preserveNullAndEmptyArrays: true,
+			},
+		};
+		pipeline.push(unwindPrtStage);
+
+		const unwindPrtProductsStage = {
+			$unwind: {
+				path: "$purchaseReturns.returnedProducts",
+				preserveNullAndEmptyArrays: true,
+			},
+		};
+		pipeline.push(unwindPrtProductsStage);
+
+		const displayWithPrtStage = {
+			$group: {
+				_id: "$_id",
+				poNo: {
+					$first: "$poNo",
+				},
+				status: {
+					$first: "$status",
+				},
+				credit: {
+					$first: "$credit",
+				},
+				customer: {
+					$first: "$customer",
+				},
+				totalPrice: {
+					$first: "$totalPrice",
+				},
+				totalCost: {
+					$first: "$totalCost",
+				},
+				totalProducts: {
+					$first: "$totalProducts",
+				},
+				totalReturnedPrice: {
+					$sum: {
+						$multiply: [
+							"$purchaseReturns.returnedProducts.price",
+							"$purchaseReturns.returnedProducts.quantity",
+						],
+					},
+				},
+				createdDate: {
+					$first: "$createdDate",
+				},
+			},
+		};
+		pipeline.push(displayWithPrtStage);
 
 		if (search) {
 			const searchStage = {
@@ -300,7 +371,47 @@ export const getOrder = async (req, res, next) => {
 	let order;
 
 	try {
-		order = await Order.findById(orderId).exec();
+		const pipeline = [];
+
+		const matchOrderStage = {
+			$match: {
+				_id: mongoose.Types.ObjectId(orderId),
+			},
+		};
+		pipeline.push(matchOrderStage);
+
+		const lookupCustomerStage = {
+			$lookup: {
+				from: "customers",
+				localField: "customer",
+				foreignField: "_id",
+				as: "customer",
+			},
+		};
+		pipeline.push(lookupCustomerStage);
+
+		const unwindCustomerStage = {
+			$unwind: "$customer",
+		};
+		pipeline.push(unwindCustomerStage);
+
+		const displayStage = {
+			$project: {
+				poNo: 1,
+				customer: {
+					firstName: "$customer.firstName",
+					lastName: "$customer.lastName",
+				},
+				products: 1,
+				credit: 1,
+				status: 1,
+				createdDate: 1,
+				updatedDate: 1,
+			},
+		};
+		pipeline.push(displayStage);
+
+		order = await Order.aggregate(pipeline).exec();
 	} catch (err) {
 		return next(
 			new HttpError("Cannot find this order. Please try again!", 404)
@@ -308,6 +419,57 @@ export const getOrder = async (req, res, next) => {
 	}
 
 	res.status(200).json(order);
+};
+
+export const getOrderPrt = async (req, res, next) => {
+	const orderId = req.params.orderId;
+	let prts;
+
+	try {
+		const pipeline = [];
+
+		const matchOrderStage = {
+			$match: {
+				order: mongoose.Types.ObjectId(orderId),
+			},
+		};
+		pipeline.push(matchOrderStage);
+
+		const unwindReturnedProductsStage = {
+			$unwind: "$returnedProducts",
+		};
+		pipeline.push(unwindReturnedProductsStage);
+
+		const groupByProductStage = {
+			$group: {
+				_id: "$returnedProducts.code",
+				name: {
+					$first: "$returnedProducts.name",
+				},
+				quantity: {
+					$sum: "$returnedProducts.quantity",
+				},
+				price: {
+					$sum: "$returnedProducts.price",
+				},
+				prtNo: {
+					$push: "$prtNo",
+				},
+			},
+		};
+		pipeline.push(groupByProductStage);
+
+		prts = await PurchaseReturn.aggregate(pipeline).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot retrieve purchase returns for this order. Please try again later.",
+				500
+			)
+		);
+	}
+
+	res.status(200).send(prts);
 };
 
 export const editOrder = async (req, res, next) => {
@@ -506,6 +668,7 @@ export const cancelOrder = async (req, res, next) => {
 			{
 				$set: {
 					isActive: false,
+					status: "CANCELLED",
 					deactivatedDate: Date.now(),
 				},
 			}

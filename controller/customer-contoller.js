@@ -2,8 +2,10 @@ import mongoose from "mongoose";
 
 import HttpError from "../model/http-error.js";
 import Customer from "../model/customer-model.js";
+import Order from "../model/order-model.js";
 import { customerValidation } from "../util/customer-validate.js";
 import { generateNumber } from "../util/util.js";
+import { raw } from "express";
 
 export const createCustomer = async (req, res, next) => {
 	//Server side validation
@@ -127,6 +129,101 @@ export const getCustomer = async (req, res, next) => {
 	}
 
 	res.status(200).json(customer);
+};
+
+export const getCustomerCredits = async (req, res, next) => {
+	const customerId = req.params.customerId;
+	let ordersWithCredit;
+	let totalCredits;
+
+	//Server pagination and filter
+	const { limit = 10, page = 1, search = "" } = req.query;
+	const findParams = {
+		$gt: {
+			credit: 0,
+		},
+		isActive: true,
+		status: "SUBMIT",
+		customer: customerId,
+		userId: req.userData.userId,
+	};
+
+	if (search) {
+		findParams.poNo = new RegExp(`${search.toUpperCase()}`);
+	}
+
+	//Retrieve orders with credits list
+	try {
+		ordersWithCredit = await Order.find(findParams, {
+			poNo: 1,
+			credit: 1,
+			createdDate: 1,
+		})
+			.sort({
+				createdDate: -1,
+			})
+			.limit(limit)
+			.skip((page - 1) * limit)
+			.exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot retrieve customer's credit information. Try again later!",
+				500
+			)
+		);
+	}
+
+	//Retrieve total credits of the customer
+	const pipeline = [];
+
+	const activeOrderStage = {
+		$match: {
+			credit: {
+				$gte: 0,
+			},
+			isActive: true,
+			status: "SUBMIT",
+			customer: mongoose.Types.ObjectId(customerId),
+			userId: mongoose.Types.ObjectId(req.userData.userId),
+		},
+	};
+	pipeline.push(activeOrderStage);
+
+	const groupByCustomerStage = {
+		$group: {
+			_id: "$customer",
+			totalCredits: {
+				$sum: "$credit",
+			},
+		},
+	};
+	pipeline.push(groupByCustomerStage);
+
+	const displayTotalCreditStage = {
+		$project: {
+			_id: 0,
+			totalCredits: "$totalCredits",
+		},
+	};
+	pipeline.push(displayTotalCreditStage);
+
+	try {
+		totalCredits = await Order.aggregate(pipeline);
+		totalCredits = totalCredits.pop().totalCredits;
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot retrieve customer's credit information. Try again later!",
+				500
+			)
+		);
+	}
+
+	res.status(200).json({
+		orders: ordersWithCredit,
+		totalCredits,
+	});
 };
 
 export const editCustomer = async (req, res, next) => {
