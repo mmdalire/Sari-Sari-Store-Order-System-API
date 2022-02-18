@@ -7,6 +7,7 @@ import HttpError from "./model/http-error.js";
 
 import categoryRoute from "./routes/category-route.js";
 import customerRoute from "./routes/customer-route.js";
+import dashboardRoute from "./routes/dashboard-route.js";
 import inventoryRoute from "./routes/inventory-route.js";
 import orderRoute from "./routes/order-route.js";
 import productRoute from "./routes/product-route.js";
@@ -22,6 +23,7 @@ app.use(cors());
 
 //Routes
 app.use("/api/users", userRoute);
+app.use("/api/dashboard", dashboardRoute);
 app.use("/api/customers", customerRoute);
 app.use("/api/categories", categoryRoute);
 app.use("/api/inventory", inventoryRoute);

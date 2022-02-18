@@ -191,7 +191,9 @@ export const editProduct = async (req, res, next) => {
 		delete req.body.unit;
 	}
 
-	req.body.description = req.body.description.trim();
+	req.body.description = req.body.description
+		? req.body.description.trim()
+		: "";
 	req.body.updatedDate = Date.now();
 
 	try {
