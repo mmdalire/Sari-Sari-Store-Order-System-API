@@ -1,10 +1,15 @@
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 import HttpError from "../model/http-error.js";
 import User from "../model/user-model.js";
-import { signupValidation, loginValidation } from "../util/user-validate.js";
+import {
+	signupValidation,
+	loginValidation,
+	passwordValidation,
+} from "../util/user-validate.js";
 
 dotenv.config();
 
@@ -133,5 +138,97 @@ export const login = async (req, res, next) => {
 	return res.status(201).json({
 		userId: existingUser.id,
 		token,
+	});
+};
+
+export const changePassword = async (req, res, next) => {
+	//Server side validation
+	const error = passwordValidation(req.body);
+	let user;
+	if (error) {
+		return next(new HttpError(error, 422));
+	}
+
+	//Find if the user exists
+	try {
+		user = await User.findById(req.userData.userId).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot change password. Please try again later!",
+				500
+			)
+		);
+	}
+
+	if (!user) {
+		return next(
+			new HttpError(
+				"This user does not exists. Please enter the right credentials",
+				404
+			)
+		);
+	}
+
+	//Check if the old password is valid
+	let isValidPassword = false;
+	try {
+		isValidPassword = await bcrypt.compare(
+			req.body.oldPassword,
+			user.password
+		);
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot change password. Please try again later!",
+				500
+			)
+		);
+	}
+
+	if (!isValidPassword) {
+		return next(
+			new HttpError(
+				"Incorrect old password! Please enter correct credentials!",
+				401
+			)
+		);
+	}
+
+	//Encrypt password
+	let hashedPassword;
+	const salt = 12;
+	try {
+		hashedPassword = await bcrypt.hash(req.body.newPassword, salt);
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot change password. Please try again later!",
+				500
+			)
+		);
+	}
+
+	//Save new password
+	try {
+		await User.updateOne(
+			{ _id: mongoose.Types.ObjectId(req.userData.userId) },
+			{
+				$set: {
+					password: hashedPassword,
+				},
+			}
+		);
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot change password. Please try again later!",
+				500
+			)
+		);
+	}
+
+	res.status(201).json({
+		message: "Successfully changed password!",
 	});
 };

@@ -62,10 +62,39 @@ export const createProduct = async (req, res, next) => {
 
 export const getAllProducts = async (req, res, next) => {
 	//Server searching and pagination
-	const { limit = 10, page = 1, search = "" } = req.query;
+	const {
+		limit = 10,
+		page = 1,
+		search = "",
+		sort = "createddate",
+		order = "desc",
+	} = req.query;
 	const findParameters = {
 		isActive: true,
 		userId: req.userData.userId,
+	};
+	const sortParams = () => {
+		switch (sort) {
+			case "createddate":
+				return "createdDate";
+			case "updateddate":
+				return "updatedDate";
+			case "name":
+				return "name";
+			case "code":
+				return "code";
+			case "quantity":
+				return "quantity";
+			case "price":
+				return "price";
+			case "cost":
+				return "cost";
+			case "category":
+				return "category";
+		}
+	};
+	const orderParams = () => {
+		return order === "desc" ? -1 : 1;
 	};
 
 	if (search) {
@@ -89,7 +118,7 @@ export const getAllProducts = async (req, res, next) => {
 			price: 1,
 			cost: 1,
 		})
-			.sort({ name: 1 })
+			.sort({ [sortParams()]: orderParams() })
 			.limit(limit)
 			.skip((page - 1) * limit)
 			.exec();

@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+import Customer from "../model/customer-model.js";
 import HttpError from "../model/http-error.js";
 import Order from "../model/order-model.js";
 import Product from "../model/product-model.js";
@@ -32,6 +33,30 @@ export const createOrder = async (req, res, next) => {
 	const error = orderValidation(req.body);
 	if (error) {
 		return next(new HttpError(error, 422));
+	}
+
+	//Disallow customers to order if they are blacklisted
+	let customer;
+	try {
+		customer = await Customer.findOne({
+			_id: req.body.customer,
+		}).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot create order information. Please try again later!",
+				500
+			)
+		);
+	}
+
+	if (customer.isBlacklisted) {
+		return next(
+			new HttpError(
+				"This customer is blacklisted from this store. Update its customer info if you think this is wrong.",
+				422
+			)
+		);
 	}
 
 	//Product validation where each entered product should exists in the products collection
@@ -156,7 +181,37 @@ export const createOrder = async (req, res, next) => {
 
 export const getAllOrders = async (req, res, next) => {
 	//Server pagination and filtering
-	const { limit = 10, page = 1, search = "" } = req.query;
+	const {
+		limit = 10,
+		page = 1,
+		search = "",
+		sort = "createddate",
+		order = "desc",
+	} = req.query;
+
+	const sortParams = () => {
+		switch (sort) {
+			case "createddate":
+				return "createdDate";
+			case "updateddate":
+				return "updatedDate";
+			case "pono":
+				return "poNo";
+			case "status":
+				return "status";
+			case "customer":
+				return "customer";
+			case "totalprice":
+				return "totalPrice";
+			case "totalproducts":
+				return "totalProducts";
+		}
+	};
+
+	const orderParams = () => {
+		return order === "desc" ? -1 : 1;
+	};
+
 	let orders;
 
 	try {
@@ -309,6 +364,9 @@ export const getAllOrders = async (req, res, next) => {
 				createdDate: {
 					$first: "$createdDate",
 				},
+				updatedDate: {
+					$first: "$updatedDate",
+				},
 			},
 		};
 		pipeline.push(displayWithPrtStage);
@@ -337,7 +395,7 @@ export const getAllOrders = async (req, res, next) => {
 
 		const sortStage = {
 			$sort: {
-				createdDate: -1,
+				[sortParams()]: orderParams(),
 			},
 		};
 		pipeline.push(sortStage);

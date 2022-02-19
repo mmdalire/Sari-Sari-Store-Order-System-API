@@ -66,8 +66,33 @@ export const createCustomer = async (req, res, next) => {
 
 export const getAllCustomers = async (req, res, next) => {
 	//Server searching and pagination
-	const { limit = 10, page = 1, search = "" } = req.query;
+	const {
+		limit = 10,
+		page = 1,
+		search = "",
+		sort = "createddate",
+		order = "desc",
+	} = req.query;
 	const findParameters = { userId: req.userData.userId, isActive: true };
+	const sortParams = () => {
+		switch (sort) {
+			case "createddate":
+				return "createdDate";
+			case "updateddate":
+				return "updatedDate";
+			case "customerno":
+				return "customerNo";
+			case "lastname":
+				return "lastName";
+			case "firstname":
+				return "firstName";
+			case "isblacklisted":
+				return "isBlacklisted";
+		}
+	};
+	const orderParams = () => {
+		return order === "desc" ? -1 : 1;
+	};
 
 	if (search) {
 		findParameters.$or = [
@@ -95,7 +120,7 @@ export const getAllCustomers = async (req, res, next) => {
 			isBlacklisted: 1,
 		})
 			.sort({
-				lastName: 1,
+				[sortParams()]: orderParams(),
 			})
 			.limit(limit)
 			.skip((page - 1) * limit)
@@ -137,15 +162,36 @@ export const getCustomerCredits = async (req, res, next) => {
 	let totalCredits;
 
 	//Server pagination and filter
-	const { limit = 10, page = 1, search = "" } = req.query;
+	const {
+		limit = 10,
+		page = 1,
+		search = "",
+		sort = "createddate",
+		order = "desc",
+	} = req.query;
 	const findParams = {
-		$gt: {
-			credit: 0,
+		credit: {
+			$gt: 0,
 		},
 		isActive: true,
 		status: "SUBMIT",
 		customer: customerId,
 		userId: req.userData.userId,
+	};
+	const sortParams = () => {
+		switch (sort) {
+			case "createddate":
+				return "createdDate";
+			case "updateddate":
+				return "updatedDate";
+			case "pono":
+				return "poNo";
+			case "credit":
+				return "credit";
+		}
+	};
+	const orderParams = () => {
+		return order === "desc" ? -1 : 1;
 	};
 
 	if (search) {
@@ -160,7 +206,7 @@ export const getCustomerCredits = async (req, res, next) => {
 			createdDate: 1,
 		})
 			.sort({
-				createdDate: -1,
+				[sortParams()]: orderParams(),
 			})
 			.limit(limit)
 			.skip((page - 1) * limit)
@@ -180,7 +226,7 @@ export const getCustomerCredits = async (req, res, next) => {
 	const activeOrderStage = {
 		$match: {
 			credit: {
-				$gte: 0,
+				$gt: 0,
 			},
 			isActive: true,
 			status: "SUBMIT",
@@ -210,7 +256,10 @@ export const getCustomerCredits = async (req, res, next) => {
 
 	try {
 		totalCredits = await Order.aggregate(pipeline);
-		totalCredits = totalCredits.pop().totalCredits;
+		totalCredits =
+			totalCredits && totalCredits.length
+				? totalCredits.pop().totalCredits
+				: 0;
 	} catch (err) {
 		return next(
 			new HttpError(

@@ -7,9 +7,33 @@ import PurchaseReturn from "../model/purchase-return-model.js";
 
 export const viewAllProducts = async (req, res, next) => {
 	//Server pagination and filtering
-	const { limit = 20, page = 1, search = "", lowThreshold = 0 } = req.query;
+	const {
+		limit = 20,
+		page = 1,
+		search = "",
+		lowThreshold = 0,
+		sort = "name",
+		order = "asc",
+	} = req.query;
 	const findParams = {
 		userId: req.userData.userId,
+	};
+	const sortParams = () => {
+		switch (sort) {
+			case "name":
+				return "name";
+			case "category":
+				return "category";
+			case "code":
+				return "code";
+			case "quantity":
+				return "quantity";
+			case "price":
+				return "price";
+		}
+	};
+	const orderParams = () => {
+		return order === "desc" ? -1 : 1;
 	};
 	let products;
 
@@ -38,7 +62,7 @@ export const viewAllProducts = async (req, res, next) => {
 			userId: 0,
 		})
 			.sort({
-				name: 1,
+				[sortParams()]: orderParams(),
 			})
 			.limit(limit)
 			.skip((page - 1) * limit)
@@ -84,7 +108,28 @@ export const viewOrdersWithProduct = async (req, res, next) => {
 	let orders;
 
 	//Server pagination and filtering
-	const { limit = 20, page = 1, search = "" } = req.query;
+	const {
+		limit = 20,
+		page = 1,
+		search = "",
+		sort = "createddate",
+		order = "desc",
+	} = req.query;
+	const sortParams = () => {
+		switch (sort) {
+			case "createddate":
+				return "createdDate";
+			case "pono":
+				return "poNo";
+			case "quantity":
+				return "quantity";
+			case "price":
+				return "price";
+		}
+	};
+	const orderParams = () => {
+		return order === "desc" ? -1 : 1;
+	};
 
 	//Get the product code as reference
 	try {
@@ -192,7 +237,7 @@ export const viewOrdersWithProduct = async (req, res, next) => {
 
 		const sortStage = {
 			$sort: {
-				createdDate: -1,
+				[sortParams()]: orderParams(),
 			},
 		};
 		pipeline.push(sortStage);
@@ -234,7 +279,28 @@ export const viewPrtWithProduct = async (req, res, next) => {
 	let prts;
 
 	//Server pagination and filtering
-	const { limit = 20, page = 1, search = "" } = req.query;
+	const {
+		limit = 20,
+		page = 1,
+		search = "",
+		sort = "createddate",
+		order = "desc",
+	} = req.query;
+	const sortParams = () => {
+		switch (sort) {
+			case "createddate":
+				return "createdDate";
+			case "prtno":
+				return "prtNo";
+			case "price":
+				return "price";
+			case "quantity":
+				return "quantity";
+		}
+	};
+	const orderParams = () => {
+		return order === "desc" ? -1 : 1;
+	};
 
 	//Get the product code as reference
 	try {
@@ -302,7 +368,7 @@ export const viewPrtWithProduct = async (req, res, next) => {
 		const groupByPrtStage = {
 			$group: {
 				_id: "$_id",
-				poNo: {
+				prtNo: {
 					$first: "$prtNo",
 				},
 				quantity: {
@@ -334,7 +400,7 @@ export const viewPrtWithProduct = async (req, res, next) => {
 
 		const sortStage = {
 			$sort: {
-				createdDate: -1,
+				[sortParams()]: orderParams(),
 			},
 		};
 		pipeline.push(sortStage);

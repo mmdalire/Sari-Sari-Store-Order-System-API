@@ -57,8 +57,29 @@ export const createCategory = async (req, res, next) => {
 
 export const getAllCategories = async (req, res, next) => {
 	//Server searching and pagination
-	const { limit = 10, page = 1, search = "" } = req.query;
+	const {
+		limit = 10,
+		page = 1,
+		search = "",
+		sort = "createddate",
+		order = "desc",
+	} = req.query;
 	const findParameters = { isActive: true, userId: req.userData.userId };
+	const sortParams = () => {
+		switch (sort) {
+			case "createddate":
+				return "createdDate";
+			case "updateddate":
+				return "updatedDate";
+			case "name":
+				return "name";
+			case "code":
+				return "code";
+		}
+	};
+	const orderParams = () => {
+		return order === "desc" ? -1 : 1;
+	};
 
 	if (search) {
 		findParameters.$or = [
@@ -75,7 +96,7 @@ export const getAllCategories = async (req, res, next) => {
 			name: 1,
 		})
 			.sort({
-				code: 1,
+				[sortParams()]: orderParams(),
 			})
 			.limit(limit)
 			.skip((page - 1) * limit)

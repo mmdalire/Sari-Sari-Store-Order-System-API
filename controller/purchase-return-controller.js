@@ -391,8 +391,31 @@ export const createPurchaseReturn = async (req, res, next) => {
 
 export const getAllPurchaseReturns = async (req, res, next) => {
 	//Server pagination and filter
-	const { limit = 10, page = 1, search = "" } = req.query;
+	const {
+		limit = 10,
+		page = 1,
+		search = "",
+		sort = "createddate",
+		order = "desc",
+	} = req.query;
 	let purchaseReturns;
+	const sortParams = () => {
+		switch (sort) {
+			case "createddate":
+				return "createdDate";
+			case "prtno":
+				return "prtNo";
+			case "pono":
+				return "poNo";
+			case "returnedtotalprice":
+				return "returnedTotalPrice";
+			case "returnedtotalquantity":
+				return "returnedTotalQuantity";
+		}
+	};
+	const orderParams = () => {
+		return order === "desc" ? -1 : 1;
+	};
 
 	try {
 		const pipeline = [];
@@ -466,7 +489,7 @@ export const getAllPurchaseReturns = async (req, res, next) => {
 
 		const sortStage = {
 			$sort: {
-				createdDate: -1,
+				[sortParams()]: orderParams(),
 			},
 		};
 		pipeline.push(sortStage);
