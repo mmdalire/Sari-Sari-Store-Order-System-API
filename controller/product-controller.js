@@ -4,7 +4,10 @@ import HttpError from "../model/http-error.js";
 import Order from "../model/order-model.js";
 import Product from "../model/product-model.js";
 
-import { productValidation } from "../util/product-validate.js";
+import {
+	productValidation,
+	restockProductValidation,
+} from "../util/product-validate.js";
 
 export const createProduct = async (req, res, next) => {
 	//Server validation
@@ -107,21 +110,83 @@ export const getAllProducts = async (req, res, next) => {
 
 	//Retrieve all products
 	let products;
+	const pipeline = [];
 
 	try {
-		products = await Product.find(findParameters, {
-			code: 1,
-			name: 1,
-			category: 1,
-			quantity: 1,
-			unit: 1,
-			price: 1,
-			cost: 1,
-		})
-			.sort({ [sortParams()]: orderParams() })
-			.limit(limit)
-			.skip((page - 1) * limit)
-			.exec();
+		const getActiveProductStage = {
+			$match: {
+				userId: mongoose.Types.ObjectId(req.userData.userId),
+				isActive: true,
+			},
+		};
+		pipeline.push(getActiveProductStage);
+
+		const lookupOrdersStage = {
+			$lookup: {
+				from: "orders",
+				localField: "code",
+				foreignField: "products.code",
+				as: "orders",
+			},
+		};
+		pipeline.push(lookupOrdersStage);
+
+		const displayStage = {
+			$project: {
+				_id: 1,
+				name: 1,
+				code: 1,
+				category: 1,
+				unit: 1,
+				price: 1,
+				cost: 1,
+				quantity: 1,
+				status: {
+					$cond: {
+						if: {
+							$gt: [{ $size: "$orders" }, 0],
+						},
+						then: "IN-USE",
+						else: "UNUSED",
+					},
+				},
+			},
+		};
+		pipeline.push(displayStage);
+
+		if (search) {
+			const searchStage = {
+				$match: {
+					$or: [
+						{ code: new RegExp(`${search.toUpperCase()}`) },
+						{ name: new RegExp(`${search.toUpperCase()}`) },
+						{ category: new RegExp(`${search.toUpperCase()}`) },
+					],
+				},
+			};
+
+			pipeline.push(searchStage);
+		}
+
+		const sortStage = {
+			$sort: {
+				[sortParams()]: orderParams(),
+			},
+		};
+		pipeline.push(sortStage);
+
+		const paginationStage = {
+			$skip: (parseInt(page) - 1) * parseInt(limit),
+		};
+		pipeline.push(paginationStage);
+
+		const limitStage = {
+			$limit: parseInt(limit),
+		};
+		pipeline.push(limitStage);
+
+		//Apply aggregation framework
+		products = await Product.aggregate(pipeline);
 	} catch (err) {
 		return next(
 			new HttpError(
@@ -131,7 +196,33 @@ export const getAllProducts = async (req, res, next) => {
 		);
 	}
 
-	res.status(200).json(products);
+	//Retrieve total count
+	let productsCount;
+	try {
+		pipeline.splice(-3); //Remove last three stages for counting of documents (sort, limit, and skip)
+
+		const countStage = {
+			$count: "name",
+		};
+		pipeline.push(countStage);
+
+		//Apply the aggregation pipeline
+		productsCount = await Product.aggregate(pipeline).exec();
+
+		productsCount =
+			productsCount && productsCount.length
+				? productsCount.pop().name
+				: 0;
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot retrieve products. Please try again later!",
+				500
+			)
+		);
+	}
+
+	res.status(200).json({ data: products, count: productsCount });
 };
 
 export const getProduct = async (req, res, next) => {
@@ -139,8 +230,59 @@ export const getProduct = async (req, res, next) => {
 
 	//Retrieve specific product by ID
 	let product;
+
 	try {
-		product = await Product.findById(productId).exec();
+		const pipeline = [];
+
+		const getOwnProductStage = {
+			$match: {
+				userId: mongoose.Types.ObjectId(req.userData.userId),
+				_id: mongoose.Types.ObjectId(productId),
+			},
+		};
+		pipeline.push(getOwnProductStage);
+
+		const lookupCategoryStage = {
+			$lookup: {
+				from: "categories",
+				localField: "category",
+				foreignField: "name",
+				as: "category",
+			},
+		};
+		pipeline.push(lookupCategoryStage);
+
+		const unwindCategoryStage = {
+			$unwind: "$category",
+		};
+		pipeline.push(unwindCategoryStage);
+
+		const matchOwnCategoryStage = {
+			$match: {
+				"category.userId": mongoose.Types.ObjectId(req.userData.userId),
+			},
+		};
+		pipeline.push(matchOwnCategoryStage);
+
+		const displayStage = {
+			$project: {
+				_id: 1,
+				name: 1,
+				code: 1,
+				categoryCode: "$category.code",
+				category: "$category.name",
+				description: 1,
+				type: 1,
+				unit: 1,
+				price: 1,
+				cost: 1,
+				quantity: 1,
+			},
+		};
+		pipeline.push(displayStage);
+
+		//Apply aggregation pipeline
+		product = await Product.aggregate(pipeline).exec();
 	} catch (err) {
 		return next(
 			new HttpError(
@@ -150,7 +292,53 @@ export const getProduct = async (req, res, next) => {
 		);
 	}
 
+	if (product) {
+		product = product.pop();
+	}
+
 	res.status(200).json(product);
+};
+
+export const restockProduct = async (req, res, next) => {
+	const productId = req.params.productId;
+	const quantity = req.body.quantity;
+
+	//Ownership validation
+	try {
+		await Product.ownershipValidation(req.userData.userId, productId);
+	} catch (err) {
+		return next(new HttpError("Unauthorized access!", 401));
+	}
+
+	//Server validation
+	const error = restockProductValidation(req.body);
+	if (error) {
+		return next(new HttpError(error, 422));
+	}
+
+	//Update stock quantity of a product
+	try {
+		await Product.updateOne(
+			{
+				_id: mongoose.Types.ObjectId(productId),
+			},
+			{
+				$set: {
+					quantity,
+					updatedDate: Date.now(),
+				},
+			}
+		);
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot restock this product. Please try again later!",
+				500
+			)
+		);
+	}
+
+	res.status(200).json({ message: "Successfully updated product!" });
 };
 
 export const editProduct = async (req, res, next) => {

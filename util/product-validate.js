@@ -37,3 +37,18 @@ export const productValidation = (
 	}
 	return;
 };
+
+export const restockProductValidation = (data) => {
+	const templateSchema = {
+		quantity: Joi.number().greater(0).required(),
+		userId: Joi.string().required(),
+	};
+
+	const schema = Joi.object(templateSchema);
+	const { error } = schema.validate(data);
+
+	if (error) {
+		return reformatJoiError(error);
+	}
+	return;
+};

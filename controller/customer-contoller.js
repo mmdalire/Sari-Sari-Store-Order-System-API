@@ -73,7 +73,7 @@ export const getAllCustomers = async (req, res, next) => {
 		sort = "createddate",
 		order = "desc",
 	} = req.query;
-	const findParameters = { userId: req.userData.userId, isActive: true };
+	const findParams = { userId: req.userData.userId, isActive: true };
 	const sortParams = () => {
 		switch (sort) {
 			case "createddate":
@@ -95,7 +95,7 @@ export const getAllCustomers = async (req, res, next) => {
 	};
 
 	if (search) {
-		findParameters.$or = [
+		findParams.$or = [
 			{ customerNo: new RegExp(`${search.toUpperCase()}`) },
 			{ firstName: new RegExp(`${search.toUpperCase()}`) },
 			{ lastName: new RegExp(`${search.toUpperCase()}`) },
@@ -105,13 +105,26 @@ export const getAllCustomers = async (req, res, next) => {
 
 	//Filtering
 	if ("isBlacklisted" in req.query) {
-		findParameters.isBlacklisted = true;
+		findParams.isBlacklisted = true;
+	}
+
+	//Get all customers count
+	let customersCount;
+	try {
+		customersCount = await Customer.countDocuments(findParams).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot retrieve customers. Please try again later!",
+				500
+			)
+		);
 	}
 
 	//Retrieve all customers
 	let customers;
 	try {
-		customers = await Customer.find(findParameters, {
+		customers = await Customer.find(findParams, {
 			customerNo: 1,
 			firstName: 1,
 			middleInitial: 1,
@@ -134,7 +147,7 @@ export const getAllCustomers = async (req, res, next) => {
 		);
 	}
 
-	res.status(200).json(customers);
+	res.status(200).json({ data: customers, count: customersCount });
 };
 
 export const getCustomer = async (req, res, next) => {
@@ -196,6 +209,20 @@ export const getCustomerCredits = async (req, res, next) => {
 
 	if (search) {
 		findParams.poNo = new RegExp(`${search.toUpperCase()}`);
+	}
+
+	//Get all customers count
+	let creditCount;
+	try {
+		creditCount = await Order.countDocuments(findParams).exec();
+	} catch (err) {
+		console.log(err);
+		return next(
+			new HttpError(
+				"Cannot retrieve customer's credit information. Please try again later!",
+				500
+			)
+		);
 	}
 
 	//Retrieve orders with credits list
@@ -272,6 +299,7 @@ export const getCustomerCredits = async (req, res, next) => {
 	res.status(200).json({
 		orders: ordersWithCredit,
 		totalCredits,
+		count: creditCount,
 	});
 };
 
@@ -309,12 +337,126 @@ export const editCustomer = async (req, res, next) => {
 		return next(
 			new HttpError(
 				"Cannot update this customer. Please try again later!",
-				400
+				500
 			)
 		);
 	}
 
 	res.status(200).json({ message: "Successfully updated customer!" });
+};
+
+export const blacklistCustomer = async (req, res, next) => {
+	const customerId = req.params.customerId;
+	let customer;
+
+	//Ownership validation
+	try {
+		await Customer.ownershipValidation(req.userData.userId, customerId);
+	} catch (err) {
+		return next(new HttpError("Unauthorized access!", 401));
+	}
+
+	//If the customer is already blacklisted, halt the process
+	try {
+		customer = await Customer.findById(customerId).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot blacklist this customer. Please try again later!",
+				500
+			)
+		);
+	}
+
+	if (customer) {
+		if (customer.isBlacklisted) {
+			return next(
+				new HttpError("This customer is already blacklisted.", 422)
+			);
+		}
+	} else {
+		return next(new HttpError("This customer does not exists.", 400));
+	}
+
+	//Update the blacklist status of the customer
+	try {
+		await Customer.updateOne(
+			{ _id: mongoose.Types.ObjectId(customerId) },
+			{
+				$set: {
+					isBlacklisted: true,
+					updatedDate: Date.now(),
+				},
+			}
+		).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot blacklist this customer. Please try again later!",
+				500
+			)
+		);
+	}
+
+	res.status(200).json({ message: "Successfully blacklisted customer!" });
+};
+
+export const reverseBlacklistCustomer = async (req, res, next) => {
+	const customerId = req.params.customerId;
+	let customer;
+
+	//Ownership validation
+	try {
+		await Customer.ownershipValidation(req.userData.userId, customerId);
+	} catch (err) {
+		return next(new HttpError("Unauthorized access!", 401));
+	}
+
+	//If the customer is already NOT blacklisted, halt the process
+	try {
+		customer = await Customer.findById(customerId).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot reverse blacklist this customer. Please try again later!",
+				500
+			)
+		);
+	}
+
+	if (customer) {
+		if (!customer.isBlacklisted) {
+			return next(
+				new HttpError("This customer is already not blacklisted.", 422)
+			);
+		}
+	} else {
+		return next(new HttpError("This customer does not exists.", 400));
+	}
+
+	//Update the blacklist status of the customer
+	try {
+		await Customer.updateOne(
+			{ _id: mongoose.Types.ObjectId(customerId) },
+			{
+				$set: {
+					isBlacklisted: false,
+					updatedDate: Date.now(),
+				},
+			}
+		).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot reverse blacklist this customer. Please try again later!",
+				500
+			)
+		);
+	}
+
+	res.status(200).json({
+		message: "Successfully reverse blacklisted customer!",
+	});
 };
 
 export const deleteCustomer = async (req, res, next) => {

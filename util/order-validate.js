@@ -7,6 +7,7 @@ export const orderValidation = (data, type = "create") => {
 		customer: Joi.string().required(),
 		credit: Joi.number().min(0),
 		status: Joi.string().required(),
+		remarks: Joi.string().allow(""),
 		userId: Joi.string().required(),
 	};
 

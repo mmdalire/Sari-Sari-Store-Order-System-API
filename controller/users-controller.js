@@ -52,6 +52,9 @@ export const signup = async (req, res, next) => {
 	const user = new User({
 		firstName: req.body.firstName.trim().toUpperCase(),
 		lastName: req.body.lastName.trim().toUpperCase(),
+		middleInitial: req.body.middleInitial
+			? req.body.middleInitial.toUpperCase()
+			: "",
 		email: req.body.email.trim().toLowerCase(),
 		gender: req.body.gender.trim().toLowerCase(),
 		birthdate: req.body.birthdate,

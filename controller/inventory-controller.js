@@ -76,7 +76,20 @@ export const viewAllProducts = async (req, res, next) => {
 		);
 	}
 
-	res.status(200).send(products);
+	//Retrieve total count
+	let productsCount;
+	try {
+		productsCount = await Product.countDocuments(findParams).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot retrieve products. Please try again later!",
+				500
+			)
+		);
+	}
+
+	res.status(200).send({ data: products, count: productsCount });
 };
 
 export const viewProduct = async (req, res, next) => {
@@ -147,10 +160,9 @@ export const viewOrdersWithProduct = async (req, res, next) => {
 		return next(new HttpError("Cannot find this product.", 404));
 	}
 
+	const pipeline = [];
 	//Get the summary for the product and all the orders involving the product
 	try {
-		const pipeline = [];
-
 		const matchProductStage = {
 			$match: {
 				"products.code": product.code,
@@ -263,12 +275,37 @@ export const viewOrdersWithProduct = async (req, res, next) => {
 		);
 	}
 
+	//Retrieve total count
+	let orderCount;
+	try {
+		pipeline.splice(-3); //Remove last three stages for counting of documents (sort, limit, and skip)
+
+		const countStage = {
+			$count: "poNo",
+		};
+		pipeline.push(countStage);
+
+		//Apply the aggregation pipeline
+		orderCount = await Order.aggregate(pipeline).exec();
+
+		orderCount =
+			orderCount && orderCount.length ? orderCount.pop().poNo : 0;
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot retrieve this product. Please try again later!",
+				500
+			)
+		);
+	}
+
 	res.status(200).send({
 		summary:
 			productSummary && productSummary.length > 0
 				? productSummary.pop()
 				: [],
 		list: orders,
+		count: orderCount,
 	});
 };
 
@@ -319,9 +356,8 @@ export const viewPrtWithProduct = async (req, res, next) => {
 	}
 
 	//Get the summary for the product and all the purchase returns involving the product
+	const pipeline = [];
 	try {
-		const pipeline = [];
-
 		const matchProductStage = {
 			$match: {
 				"returnedProducts.code": product.code,
@@ -426,11 +462,38 @@ export const viewPrtWithProduct = async (req, res, next) => {
 		);
 	}
 
+	//Retrieve total count
+	let purchaseReturnCount;
+	try {
+		pipeline.splice(-3); //Remove last three stages for counting of documents (sort, limit, and skip)
+
+		const countStage = {
+			$count: "prtNo",
+		};
+		pipeline.push(countStage);
+
+		//Apply the aggregation pipeline
+		purchaseReturnCount = await PurchaseReturn.aggregate(pipeline).exec();
+
+		purchaseReturnCount =
+			purchaseReturnCount && purchaseReturnCount.length
+				? purchaseReturnCount.pop().prtNo
+				: 0;
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot retrieve this product. Please try again later!",
+				500
+			)
+		);
+	}
+
 	res.status(200).send({
 		summary:
 			productSummary && productSummary.length > 0
 				? productSummary.pop()
 				: [],
 		list: prts,
+		count: purchaseReturnCount,
 	});
 };

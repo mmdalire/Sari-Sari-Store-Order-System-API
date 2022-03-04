@@ -8,6 +8,7 @@ export const signupValidation = (data) => {
 	const schema = Joi.object({
 		firstName: Joi.string().required(),
 		lastName: Joi.string().required(),
+		middleInitial: Joi.string().allow(""),
 		email: Joi.string().required().email(),
 		gender: Joi.string().required(),
 		birthdate: Joi.date().required(),

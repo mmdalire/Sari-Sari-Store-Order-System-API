@@ -4,6 +4,7 @@ import auth from "../middleware/auth.js";
 import {
 	createCategory,
 	getAllCategories,
+	getAllProductsByCategory,
 	editCategory,
 	deleteCategory,
 } from "../controller/category-controller.js";
@@ -12,6 +13,7 @@ const router = express.Router();
 
 router.post("/", auth, createCategory);
 router.get("/", auth, getAllCategories);
+router.get("/:categoryId/products", auth, getAllProductsByCategory);
 router.patch("/:categoryId", auth, editCategory);
 router.delete("/:categoryId", auth, deleteCategory);
 

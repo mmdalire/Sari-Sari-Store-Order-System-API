@@ -7,6 +7,8 @@ import {
 	getCustomer,
 	getCustomerCredits,
 	editCustomer,
+	blacklistCustomer,
+	reverseBlacklistCustomer,
 	deleteCustomer,
 } from "../controller/customer-contoller.js";
 
@@ -16,6 +18,8 @@ router.post("/", auth, createCustomer);
 router.get("/", auth, getAllCustomers);
 router.get("/:customerId/credits", auth, getCustomerCredits);
 router.get("/:customerId", auth, getCustomer);
+router.patch("/:customerId/blacklist", auth, blacklistCustomer);
+router.patch("/:customerId/reverseBlacklist", auth, reverseBlacklistCustomer);
 router.patch("/:customerId", auth, editCustomer);
 router.delete("/:customerId", auth, deleteCustomer);
 

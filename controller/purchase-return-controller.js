@@ -416,10 +416,9 @@ export const getAllPurchaseReturns = async (req, res, next) => {
 	const orderParams = () => {
 		return order === "desc" ? -1 : 1;
 	};
+	const pipeline = [];
 
 	try {
-		const pipeline = [];
-
 		//Aggregate pipeline stages
 		const ownPurchaseReturnStage = {
 			$match: {
@@ -514,7 +513,33 @@ export const getAllPurchaseReturns = async (req, res, next) => {
 		);
 	}
 
-	res.status(200).json(purchaseReturns);
+	//Retrieve total count
+	let purchaseReturnCount;
+	try {
+		pipeline.splice(-3); //Remove last three stages for counting of documents (sort, limit, and skip)
+
+		const countStage = {
+			$count: "prtNo",
+		};
+		pipeline.push(countStage);
+
+		//Apply the aggregation pipeline
+		purchaseReturnCount = await PurchaseReturn.aggregate(pipeline).exec();
+
+		purchaseReturnCount =
+			purchaseReturnCount && purchaseReturnCount.length
+				? purchaseReturnCount.pop().prtNo
+				: 0;
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot retrieve purchase returns. Please try again later!",
+				500
+			)
+		);
+	}
+
+	res.status(200).json({ data: purchaseReturns, count: purchaseReturnCount });
 };
 
 export const getPurchaseReturn = async (req, res, next) => {
@@ -522,7 +547,49 @@ export const getPurchaseReturn = async (req, res, next) => {
 	let purchaseReturn;
 
 	try {
-		purchaseReturn = await PurchaseReturn.findById(purchaseReturnId).exec();
+		const pipeline = [];
+
+		const matchPurchaseReturnStage = {
+			$match: {
+				_id: mongoose.Types.ObjectId(purchaseReturnId),
+			},
+		};
+		pipeline.push(matchPurchaseReturnStage);
+
+		const lookupOrderStage = {
+			$lookup: {
+				from: "orders",
+				localField: "order",
+				foreignField: "_id",
+				as: "orderReference",
+			},
+		};
+		pipeline.push(lookupOrderStage);
+
+		const unwindOrder = {
+			$unwind: "$orderReference",
+		};
+		pipeline.push(unwindOrder);
+
+		const displayStage = {
+			$project: {
+				_id: 1,
+				prtNo: 1,
+				orderNo: "$orderReference.poNo",
+				returnedProducts: 1,
+				reason: 1,
+				userId: 1,
+				createdDate: 1,
+			},
+		};
+		pipeline.push(displayStage);
+
+		//Apply aggregation pipeline
+		purchaseReturn = await PurchaseReturn.aggregate(pipeline);
+
+		if (purchaseReturn) {
+			purchaseReturn = purchaseReturn.pop();
+		}
 	} catch (err) {
 		return next(
 			new HttpError(
@@ -533,4 +600,41 @@ export const getPurchaseReturn = async (req, res, next) => {
 	}
 
 	res.status(200).json(purchaseReturn);
+};
+
+export const getPurchaseReturnByOrder = async (req, res, next) => {
+	const orderNo = req.params.orderNo.toUpperCase();
+	let order;
+
+	//Get the order reference
+	try {
+		order = await Order.find(
+			{
+				poNo: orderNo,
+				userId: mongoose.Types.ObjectId(req.userData.userId),
+			},
+			{
+				products: 1,
+			}
+		).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot find this order. Please try again later!",
+				500
+			)
+		);
+	}
+
+	//Check if the order exists
+	if (!order) {
+		return next(
+			new HttpError(
+				"This order does not exists! Please check your order number and try again.",
+				400
+			)
+		);
+	}
+
+	res.status(200).json(order);
 };

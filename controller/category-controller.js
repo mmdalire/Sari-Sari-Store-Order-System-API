@@ -64,7 +64,6 @@ export const getAllCategories = async (req, res, next) => {
 		sort = "createddate",
 		order = "desc",
 	} = req.query;
-	const findParameters = { isActive: true, userId: req.userData.userId };
 	const sortParams = () => {
 		switch (sort) {
 			case "createddate":
@@ -81,26 +80,78 @@ export const getAllCategories = async (req, res, next) => {
 		return order === "desc" ? -1 : 1;
 	};
 
-	if (search) {
-		findParameters.$or = [
-			{ name: new RegExp(`${search.toUpperCase()}`) },
-			{ code: new RegExp(`${search.toUpperCase()}`) },
-		];
-	}
-
 	//Retrieve all categories
+	const pipeline = [];
 	let categories;
+
 	try {
-		categories = await Category.find(findParameters, {
-			code: 1,
-			name: 1,
-		})
-			.sort({
+		const activeCategoriesStage = {
+			$match: {
+				userId: mongoose.Types.ObjectId(req.userData.userId),
+				isActive: true,
+			},
+		};
+		pipeline.push(activeCategoriesStage);
+
+		const lookupProducts = {
+			$lookup: {
+				from: "products",
+				localField: "name",
+				foreignField: "category",
+				as: "products",
+			},
+		};
+		pipeline.push(lookupProducts);
+
+		const displayStage = {
+			$project: {
+				_id: 1,
+				name: 1,
+				code: 1,
+				status: {
+					$cond: {
+						if: {
+							$gt: [{ $size: "$products" }, 0],
+						},
+						then: "IN-USE",
+						else: "UNUSED",
+					},
+				},
+			},
+		};
+		pipeline.push(displayStage);
+
+		if (search) {
+			const searchStage = {
+				$match: {
+					$or: [
+						{ name: new RegExp(`${search.toUpperCase()}`) },
+						{ code: new RegExp(`${search.toUpperCase()}`) },
+					],
+				},
+			};
+			pipeline.push(searchStage);
+		}
+
+		const sortStage = {
+			$sort: {
 				[sortParams()]: orderParams(),
-			})
-			.limit(limit)
-			.skip((page - 1) * limit)
-			.exec();
+			},
+		};
+		pipeline.push(sortStage);
+
+		const paginationStage = {
+			$skip: (parseInt(page) - 1) * parseInt(limit),
+		};
+		pipeline.push(paginationStage);
+
+		const limitStage = {
+			$limit: parseInt(limit),
+		};
+		pipeline.push(limitStage);
+
+		//Apply the aggregation pipeline
+		categories = await Category.aggregate(pipeline);
 	} catch (err) {
 		return next(
 			new HttpError(
@@ -110,7 +161,111 @@ export const getAllCategories = async (req, res, next) => {
 		);
 	}
 
-	res.status(200).send(categories);
+	//Retrieve total count
+	let categoriesCount;
+	try {
+		pipeline.splice(-3); //Remove last three stages for counting of documents (sort, limit, and skip)
+
+		const countStage = {
+			$count: "name",
+		};
+		pipeline.push(countStage);
+
+		//Apply the aggregation pipeline
+		categoriesCount = await Category.aggregate(pipeline).exec();
+
+		categoriesCount =
+			categoriesCount && categoriesCount.length
+				? categoriesCount.pop().name
+				: 0;
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot retrieve categories. Please try again later!",
+				500
+			)
+		);
+	}
+
+	res.status(200).send({ data: categories, count: categoriesCount });
+};
+
+export const getAllProductsByCategory = async (req, res, next) => {
+	const categoryId = req.params.categoryId;
+	const { limit = 10, page = 1 } = req.query;
+	let categoryInfo;
+	let products;
+	let productsCount;
+
+	//Get the category information
+	try {
+		categoryInfo = await Category.findById(categoryId, {
+			name: 1,
+			code: 1,
+		}).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot retrieve this category. Please try again later!",
+				500
+			)
+		);
+	}
+
+	if (!categoryInfo) {
+		return next(new HttpError("This category does not exists!", 400));
+	}
+
+	//Retrieve total count of products
+	try {
+		productsCount = await Product.countDocuments(
+			{
+				category: categoryInfo.name,
+			},
+			{
+				category: 1,
+				name: 1,
+				quantity: 1,
+			}
+		).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot retrieve products. Please try again later!",
+				500
+			)
+		);
+	}
+
+	//Get the products
+	try {
+		products = await Product.find(
+			{
+				category: categoryInfo.name,
+			},
+			{
+				category: 1,
+				name: 1,
+				quantity: 1,
+			}
+		)
+			.limit(limit)
+			.skip((page - 1) * limit)
+			.exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot retrieve products. Please try again later!",
+				500
+			)
+		);
+	}
+
+	res.status(200).json({
+		info: categoryInfo,
+		products,
+		count: productsCount,
+	});
 };
 
 export const editCategory = async (req, res, next) => {

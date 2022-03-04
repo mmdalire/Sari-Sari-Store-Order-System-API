@@ -213,10 +213,9 @@ export const getAllOrders = async (req, res, next) => {
 	};
 
 	let orders;
+	const pipeline = [];
 
 	try {
-		const pipeline = [];
-
 		//Aggregation pipeline stages
 		const isActiveStage = {
 			$match: {
@@ -421,13 +420,38 @@ export const getAllOrders = async (req, res, next) => {
 		);
 	}
 
-	res.status(200).json(orders);
+	//Retrieve total count
+	let ordersCount;
+	try {
+		pipeline.splice(-3); //Remove last three stages for counting of documents (sort, limit, and skip)
+
+		const countStage = {
+			$count: "poNo",
+		};
+		pipeline.push(countStage);
+
+		//Apply the aggregation pipeline
+		ordersCount = await Order.aggregate(pipeline).exec();
+
+		ordersCount =
+			ordersCount && ordersCount.length ? ordersCount.pop().poNo : 0;
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot retrieve orders. Please try again later!",
+				500
+			)
+		);
+	}
+
+	res.status(200).json({ data: orders, count: ordersCount });
 };
 
 export const getOrder = async (req, res, next) => {
 	const orderId = req.params.orderId;
 	let order;
 
+	//Get the main orders
 	try {
 		const pipeline = [];
 
@@ -457,12 +481,16 @@ export const getOrder = async (req, res, next) => {
 			$project: {
 				poNo: 1,
 				customer: {
+					_id: "$customer._id",
+					customerNumber: "$customer.customerNo",
 					firstName: "$customer.firstName",
 					lastName: "$customer.lastName",
+					middleInitial: "$customer.middleInitial",
 				},
 				products: 1,
 				credit: 1,
 				status: 1,
+				remarks: 1,
 				createdDate: 1,
 				updatedDate: 1,
 			},
@@ -470,11 +498,53 @@ export const getOrder = async (req, res, next) => {
 		pipeline.push(displayStage);
 
 		order = await Order.aggregate(pipeline).exec();
+
+		if (order) {
+			order = order.pop();
+		}
 	} catch (err) {
 		return next(
 			new HttpError("Cannot find this order. Please try again!", 404)
 		);
 	}
+
+	//Get the stock quantity of each product in the order
+	let referenceProducts;
+	const productCodes = order.products.map((product) => product.code);
+
+	try {
+		referenceProducts = await Product.find(
+			{
+				code: {
+					$in: productCodes,
+				},
+			},
+			{
+				code: 1,
+				quantity: 1,
+			}
+		);
+	} catch (err) {
+		return next(
+			new HttpError("Cannot find this order. Please try again!", 404)
+		);
+	}
+
+	//Merge the reference products to current products in the order (for current stock quantity when updating an order)
+	order.products = order.products.map((product) => {
+		const index = referenceProducts.findIndex(
+			(rProduct) => rProduct.code === product.code
+		);
+
+		return {
+			code: product.code,
+			name: product.name,
+			quantity: product.quantity,
+			remainingQuantity: referenceProducts[index].quantity,
+			price: product.price,
+			cost: product.cost,
+		};
+	});
 
 	res.status(200).json(order);
 };
