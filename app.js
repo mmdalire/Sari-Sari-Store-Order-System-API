@@ -47,7 +47,7 @@ app.use((error, req, res, next) => {
 });
 
 //Database connection
-const dbUrl = `mongodb://localhost:27017/inventory_system?readPreference=primary&appname=MongoDB%20Compass&ssl=false`;
+const dbUrl = process.env.MONGO_URL;
 mongoose
 	.connect(dbUrl)
 	.then(() => {

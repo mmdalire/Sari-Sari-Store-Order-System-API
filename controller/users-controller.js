@@ -140,6 +140,8 @@ export const login = async (req, res, next) => {
 
 	return res.status(201).json({
 		userId: existingUser.id,
+		firstName: existingUser.firstName,
+		lastName: existingUser.lastName,
 		token,
 	});
 };

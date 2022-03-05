@@ -2,7 +2,7 @@ import Joi from "joi";
 
 import { reformatJoiError } from "./util.js";
 
-export const customerValidation = (data, type = "create") => {
+export const customerValidation = (data) => {
 	const templateSchema = {
 		firstName: Joi.string().required(),
 		lastName: Joi.string().required(),
@@ -13,10 +13,6 @@ export const customerValidation = (data, type = "create") => {
 		address: Joi.required(),
 		userId: Joi.string().required(),
 	};
-
-	if (type === "update") {
-		templateSchema.isBlacklisted = Joi.boolean().required();
-	}
 
 	const schema = Joi.object(templateSchema);
 	const { error } = schema.validate(data);

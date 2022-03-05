@@ -5,7 +5,6 @@ import Customer from "../model/customer-model.js";
 import Order from "../model/order-model.js";
 import { customerValidation } from "../util/customer-validate.js";
 import { generateNumber } from "../util/util.js";
-import { raw } from "express";
 
 export const createCustomer = async (req, res, next) => {
 	//Server side validation
@@ -73,7 +72,6 @@ export const getAllCustomers = async (req, res, next) => {
 		sort = "createddate",
 		order = "desc",
 	} = req.query;
-	const findParams = { userId: req.userData.userId, isActive: true };
 	const sortParams = () => {
 		switch (sort) {
 			case "createddate":
@@ -94,50 +92,85 @@ export const getAllCustomers = async (req, res, next) => {
 		return order === "desc" ? -1 : 1;
 	};
 
-	if (search) {
-		findParams.$or = [
-			{ customerNo: new RegExp(`${search.toUpperCase()}`) },
-			{ firstName: new RegExp(`${search.toUpperCase()}`) },
-			{ lastName: new RegExp(`${search.toUpperCase()}`) },
-			{ middleInitial: new RegExp(`${search.toUpperCase()}`) },
-		];
-	}
-
-	//Filtering
-	if ("isBlacklisted" in req.query) {
-		findParams.isBlacklisted = true;
-	}
-
-	//Get all customers count
-	let customersCount;
-	try {
-		customersCount = await Customer.countDocuments(findParams).exec();
-	} catch (err) {
-		return next(
-			new HttpError(
-				"Cannot retrieve customers. Please try again later!",
-				500
-			)
-		);
-	}
-
 	//Retrieve all customers
 	let customers;
+	const pipeline = [];
+
 	try {
-		customers = await Customer.find(findParams, {
-			customerNo: 1,
-			firstName: 1,
-			middleInitial: 1,
-			lastName: 1,
-			createdDate: 1,
-			isBlacklisted: 1,
-		})
-			.sort({
+		const matchActiveCustomersStage = {
+			$match: {
+				userId: mongoose.Types.ObjectId(req.userData.userId),
+				isActive: true,
+				isBlacklisted: "isBlacklisted" in req.query,
+			},
+		};
+		pipeline.push(matchActiveCustomersStage);
+
+		const displayStage = {
+			$project: {
+				customerNo: 1,
+				firstName: 1,
+				middleInitial: {
+					$cond: {
+						if: {
+							$ne: ["$middleInitial", ""],
+						},
+						then: "$middleInitial",
+						else: "-",
+					},
+				},
+				lastName: 1,
+				createdDate: 1,
+				status: {
+					$cond: {
+						if: {
+							$eq: ["$isBlacklisted", true],
+						},
+						then: "BLACKLISTED",
+						else: "ACTIVE",
+					},
+				},
+			},
+		};
+		pipeline.push(displayStage);
+
+		if (search) {
+			const searchStage = {
+				$match: {
+					$or: [
+						{ customerNo: new RegExp(`${search.toUpperCase()}`) },
+						{ firstName: new RegExp(`${search.toUpperCase()}`) },
+						{ lastName: new RegExp(`${search.toUpperCase()}`) },
+						{
+							middleInitial: new RegExp(
+								`${search.toUpperCase()}`
+							),
+						},
+					],
+				},
+			};
+			pipeline.push(searchStage);
+		}
+
+		const sortStage = {
+			$sort: {
 				[sortParams()]: orderParams(),
-			})
-			.limit(limit)
-			.skip((page - 1) * limit)
-			.exec();
+			},
+		};
+		pipeline.push(sortStage);
+
+		const paginationStage = {
+			$skip: (parseInt(page) - 1) * parseInt(limit),
+		};
+		pipeline.push(paginationStage);
+
+		const limitStage = {
+			$limit: parseInt(limit),
+		};
+		pipeline.push(limitStage);
+
+		//Apply aggregation pipeline
+		customers = await Customer.aggregate(pipeline).exec();
 	} catch (err) {
 		return next(
 			new HttpError(
@@ -147,7 +180,33 @@ export const getAllCustomers = async (req, res, next) => {
 		);
 	}
 
-	res.status(200).json({ data: customers, count: customersCount });
+	//Retrieve total count
+	let customerCount;
+	try {
+		pipeline.splice(-3); //Remove last three stages for counting of documents (sort, limit, and skip)
+
+		const countStage = {
+			$count: "customerNo",
+		};
+		pipeline.push(countStage);
+
+		//Apply the aggregation pipeline
+		customerCount = await Customer.aggregate(pipeline).exec();
+
+		customerCount =
+			customerCount && customerCount.length
+				? customerCount.pop().customerNo
+				: 0;
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot retrieve customer. Please try again later!",
+				500
+			)
+		);
+	}
+
+	res.status(200).json({ data: customers, count: customerCount });
 };
 
 export const getCustomer = async (req, res, next) => {
@@ -314,7 +373,7 @@ export const editCustomer = async (req, res, next) => {
 	}
 
 	//Server side validation
-	const error = customerValidation(req.body, "update");
+	const error = customerValidation(req.body);
 	if (error) {
 		return next(new HttpError(error, 422));
 	}
