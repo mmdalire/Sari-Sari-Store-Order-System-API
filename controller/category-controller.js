@@ -151,7 +151,7 @@ export const getAllCategories = async (req, res, next) => {
 		pipeline.push(limitStage);
 
 		//Apply the aggregation pipeline
-		categories = await Category.aggregate(pipeline);
+		categories = await Category.aggregate(pipeline).exec();
 	} catch (err) {
 		return next(
 			new HttpError(
@@ -188,6 +188,27 @@ export const getAllCategories = async (req, res, next) => {
 	}
 
 	res.status(200).send({ data: categories, count: categoriesCount });
+};
+
+export const getCategory = async (req, res, next) => {
+	const categoryId = req.params.categoryId;
+	let category;
+
+	try {
+		category = await Category.findById(categoryId, {
+			name: 1,
+			code: 1,
+		}).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot retrieve this category. Please try again later!",
+				500
+			)
+		);
+	}
+
+	res.status(200).json(category);
 };
 
 export const getAllProductsByCategory = async (req, res, next) => {
@@ -305,10 +326,10 @@ export const editCategory = async (req, res, next) => {
 		);
 	}
 
-	//Check if the code exists
-	let codeExists;
+	//If only the name is changed, bypass the validation of checking when the code has been used in other categories
+	let referenceCategory;
 	try {
-		codeExists = await Category.findOne({
+		referenceCategory = await Category.findOne({
 			code: req.body.code.toUpperCase(),
 			userId: mongoose.Types.ObjectId(req.userData.userId),
 		}).exec();
@@ -321,10 +342,34 @@ export const editCategory = async (req, res, next) => {
 		);
 	}
 
-	if (codeExists) {
-		return next(
-			new HttpError("This code already exists! Choose another code!", 422)
-		);
+	//If the code is changed OR everything is changed, check if the code has been used in other categories
+	if (referenceCategory) {
+		if (referenceCategory.code !== req.body.code) {
+			//Check if the code exists
+			let codeExists;
+			try {
+				codeExists = await Category.findOne({
+					code: req.body.code.toUpperCase(),
+					userId: mongoose.Types.ObjectId(req.userData.userId),
+				}).exec();
+			} catch (err) {
+				return next(
+					new HttpError(
+						"Cannot create category. Please try again later!",
+						500
+					)
+				);
+			}
+
+			if (codeExists) {
+				return next(
+					new HttpError(
+						"This code already exists! Choose another code!",
+						422
+					)
+				);
+			}
+		}
 	}
 
 	//Server side validation
