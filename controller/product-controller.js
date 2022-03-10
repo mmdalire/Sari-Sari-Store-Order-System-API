@@ -7,6 +7,7 @@ import Product from "../model/product-model.js";
 import {
 	productValidation,
 	restockProductValidation,
+	priceAndCostValidation,
 } from "../util/product-validate.js";
 
 export const createProduct = async (req, res, next) => {
@@ -43,9 +44,9 @@ export const createProduct = async (req, res, next) => {
 		name: req.body.name.trim().toUpperCase(),
 		category: req.body.category.trim().toUpperCase(),
 		code: req.body.code.trim().toUpperCase(),
-		description: req.body.description.trim(),
-		type: req.body.description.trim(),
-		unit: req.body.unit ? req.body.unit.trim() : null,
+		description: req.body.description ? req.body.description.trim() : null,
+		type: req.body.type.trim(),
+		unit: req.body.unit ? req.body.unit.trim().toLowerCase() : "pieces",
 		price: req.body.price,
 		cost: req.body.cost,
 		quantity: req.body.quantity,
@@ -150,6 +151,7 @@ export const getAllProducts = async (req, res, next) => {
 						else: "UNUSED",
 					},
 				},
+				createdDate: 1,
 			},
 		};
 		pipeline.push(displayStage);
@@ -341,6 +343,50 @@ export const restockProduct = async (req, res, next) => {
 	res.status(200).json({ message: "Successfully updated product!" });
 };
 
+export const changePriceAndCost = async (req, res, next) => {
+	const productId = req.params.productId;
+	const price = req.body.price;
+	const cost = req.body.cost;
+
+	//Ownership validation
+	try {
+		await Product.ownershipValidation(req.userData.userId, productId);
+	} catch (err) {
+		return next(new HttpError("Unauthorized access!", 401));
+	}
+
+	//Server validation
+	const error = priceAndCostValidation(req.body);
+	if (error) {
+		return next(new HttpError(error, 422));
+	}
+
+	//Update price and cost of a product
+	try {
+		await Product.updateOne(
+			{
+				_id: mongoose.Types.ObjectId(productId),
+			},
+			{
+				$set: {
+					price,
+					cost,
+					updatedDate: Date.now(),
+				},
+			}
+		);
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot update price and cost of this product. Please try again later!",
+				500
+			)
+		);
+	}
+
+	res.status(200).json({ message: "Successfully updated product!" });
+};
+
 export const editProduct = async (req, res, next) => {
 	const productId = req.params.productId;
 	let product;
@@ -364,6 +410,36 @@ export const editProduct = async (req, res, next) => {
 				500
 			)
 		);
+	}
+
+	//If the code is changed OR everything is changed, check if the code has been used in other products
+	if (product) {
+		if (product.code !== req.body.code) {
+			//Check if the code exists
+			let codeExists;
+			try {
+				codeExists = await Product.findOne({
+					code: req.body.code.toUpperCase(),
+					userId: mongoose.Types.ObjectId(req.userData.userId),
+				}).exec();
+			} catch (err) {
+				return next(
+					new HttpError(
+						"Cannot edit product. Please try again later!",
+						500
+					)
+				);
+			}
+
+			if (codeExists) {
+				return next(
+					new HttpError(
+						"This code already exists! Choose another code!",
+						422
+					)
+				);
+			}
+		}
 	}
 
 	//Check if an order has used this product

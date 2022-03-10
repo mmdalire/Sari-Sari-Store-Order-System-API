@@ -5,7 +5,7 @@ import { reformatJoiError } from "./util.js";
 export const orderValidation = (data, type = "create") => {
 	const templateSchema = {
 		customer: Joi.string().required(),
-		credit: Joi.number().min(0),
+		credit: Joi.number().allow(""),
 		status: Joi.string().required(),
 		remarks: Joi.string().allow(""),
 		userId: Joi.string().required(),
@@ -27,7 +27,6 @@ export const orderValidation = (data, type = "create") => {
 			.required();
 	} else if (type === "update") {
 		templateSchema.products = Joi.allow(null);
-		templateSchema.isActive = Joi.boolean().required();
 	}
 
 	const schema = Joi.object(templateSchema);

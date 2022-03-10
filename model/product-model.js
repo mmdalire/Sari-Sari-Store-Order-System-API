@@ -22,7 +22,7 @@ const productSchema = mongoose.Schema({
 	},
 	unit: {
 		type: String,
-		default: "pcs",
+		default: "pieces",
 	},
 	price: {
 		type: Number,

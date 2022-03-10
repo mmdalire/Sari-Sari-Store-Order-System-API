@@ -141,8 +141,9 @@ export const createOrder = async (req, res, next) => {
 		poNo: poNumber,
 		customer: req.body.customer.trim(),
 		products: makeUppercaseInArray(req.body.products),
-		credit: req.body.credit,
+		credit: req.body.credit ? req.body.credit : 0,
 		status: req.body.status.trim().toUpperCase(),
+		remarks: req.body.remarks.trim(),
 		userId: req.userData.userId,
 	});
 
@@ -192,9 +193,9 @@ export const getAllOrders = async (req, res, next) => {
 	const sortParams = () => {
 		switch (sort) {
 			case "createddate":
-				return "createdDate";
+				return "createddate";
 			case "updateddate":
-				return "updatedDate";
+				return "updateddate";
 			case "pono":
 				return "poNo";
 			case "status":
@@ -219,7 +220,6 @@ export const getAllOrders = async (req, res, next) => {
 		//Aggregation pipeline stages
 		const isActiveStage = {
 			$match: {
-				isActive: true,
 				userId: mongoose.Types.ObjectId(req.userData.userId),
 			},
 		};
@@ -360,10 +360,10 @@ export const getAllOrders = async (req, res, next) => {
 						],
 					},
 				},
-				createdDate: {
+				createddate: {
 					$first: "$createdDate",
 				},
-				updatedDate: {
+				updateddate: {
 					$first: "$updatedDate",
 				},
 			},
@@ -539,8 +539,8 @@ export const getOrder = async (req, res, next) => {
 		return {
 			code: product.code,
 			name: product.name,
-			quantity: product.quantity,
-			remainingQuantity: referenceProducts[index].quantity,
+			orderQuantity: product.quantity,
+			quantity: referenceProducts[index].quantity,
 			price: product.price,
 			cost: product.cost,
 		};

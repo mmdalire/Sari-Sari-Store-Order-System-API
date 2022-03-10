@@ -58,8 +58,8 @@ export const createCategory = async (req, res, next) => {
 export const getAllCategories = async (req, res, next) => {
 	//Server searching and pagination
 	const {
-		limit = 10,
-		page = 1,
+		limit,
+		page,
 		search = "",
 		sort = "createddate",
 		order = "desc",
@@ -117,6 +117,7 @@ export const getAllCategories = async (req, res, next) => {
 						else: "UNUSED",
 					},
 				},
+				createdDate: 1,
 			},
 		};
 		pipeline.push(displayStage);
@@ -140,15 +141,20 @@ export const getAllCategories = async (req, res, next) => {
 		};
 		pipeline.push(sortStage);
 
-		const paginationStage = {
-			$skip: (parseInt(page) - 1) * parseInt(limit),
-		};
-		pipeline.push(paginationStage);
+		//Page and limit will be used ONLY for listing purposes. Data to be used for dropdowns DO NOT NEED to be paginated
+		if (page) {
+			const paginationStage = {
+				$skip: (parseInt(page) - 1) * parseInt(limit),
+			};
+			pipeline.push(paginationStage);
+		}
 
-		const limitStage = {
-			$limit: parseInt(limit),
-		};
-		pipeline.push(limitStage);
+		if (limit) {
+			const limitStage = {
+				$limit: parseInt(limit),
+			};
+			pipeline.push(limitStage);
+		}
 
 		//Apply the aggregation pipeline
 		categories = await Category.aggregate(pipeline).exec();
@@ -164,7 +170,11 @@ export const getAllCategories = async (req, res, next) => {
 	//Retrieve total count
 	let categoriesCount;
 	try {
-		pipeline.splice(-3); //Remove last three stages for counting of documents (sort, limit, and skip)
+		if (limit && page) {
+			pipeline.splice(-3); //Remove last three stages for counting of documents (sort, limit, and skip) [FOR LISTING]
+		} else {
+			pipeline.pop(); //Remove only the sort stage [FOR DROPDOWNS]
+		}
 
 		const countStage = {
 			$count: "name",
@@ -265,6 +275,7 @@ export const getAllProductsByCategory = async (req, res, next) => {
 				category: categoryInfo.name,
 			},
 			{
+				code: 1,
 				category: 1,
 				name: 1,
 				quantity: 1,
@@ -335,10 +346,7 @@ export const editCategory = async (req, res, next) => {
 		}).exec();
 	} catch (err) {
 		return next(
-			new HttpError(
-				"Cannot create category. Please try again later!",
-				500
-			)
+			new HttpError("Cannot edit category. Please try again later!", 500)
 		);
 	}
 

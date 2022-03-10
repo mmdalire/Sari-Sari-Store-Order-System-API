@@ -52,3 +52,19 @@ export const restockProductValidation = (data) => {
 	}
 	return;
 };
+
+export const priceAndCostValidation = (data) => {
+	const templateSchema = {
+		price: Joi.number().greater(0).required(),
+		cost: Joi.number().greater(0).required(),
+		userId: Joi.string().required(),
+	};
+
+	const schema = Joi.object(templateSchema);
+	const { error } = schema.validate(data);
+
+	if (error) {
+		return reformatJoiError(error);
+	}
+	return;
+};
