@@ -604,17 +604,25 @@ export const getPurchaseReturn = async (req, res, next) => {
 
 export const getPurchaseReturnByOrder = async (req, res, next) => {
 	const orderNo = req.params.orderNo.toUpperCase();
+	const totalReturnedProducts = {};
 	let order;
+	let existedPrts;
+
+	const getValueFromObject = (obj, prop) => {
+		return obj[prop];
+	};
 
 	//Get the order reference
 	try {
-		order = await Order.find(
+		order = await Order.findOne(
 			{
 				poNo: orderNo,
 				userId: mongoose.Types.ObjectId(req.userData.userId),
 			},
 			{
+				poNo: 1,
 				products: 1,
+				status: 1,
 			}
 		).exec();
 	} catch (err) {
@@ -635,6 +643,58 @@ export const getPurchaseReturnByOrder = async (req, res, next) => {
 			)
 		);
 	}
+
+	//If the order is CANCELLED or DRAFTED, it cannot be used for purchase return
+	if (order.status !== "SUBMIT") {
+		return next(
+			new HttpError(
+				"This order is not eligible for purchase return. Please choose orders that are submitted.",
+				422
+			)
+		);
+	}
+
+	//Get the existing purchase returns related to that order
+	try {
+		existedPrts = await PurchaseReturn.find(
+			{
+				order: mongoose.Types.ObjectId(order._id),
+			},
+			{
+				_id: 0,
+				returnedProducts: 1,
+			}
+		).exec();
+	} catch (err) {
+		return next(
+			new HttpError(
+				"Cannot find this order. Please try again later!",
+				500
+			)
+		);
+	}
+
+	//Combine all quantities per product in all existing orders related to it
+	for (let i = 0; i < existedPrts.length; i++) {
+		//Check if the product exists already in the total products
+		for (let j = 0; j < existedPrts[i].returnedProducts.length; j++) {
+			let code = existedPrts[i].returnedProducts[j].code;
+			let quantity = existedPrts[i].returnedProducts[j].quantity;
+
+			//If the code doesn't exists yet
+			if (!totalReturnedProducts[code]) {
+				totalReturnedProducts[code] = quantity;
+			} else {
+				totalReturnedProducts[code] =
+					getValueFromObject(totalReturnedProducts, code) + quantity;
+			}
+		}
+	}
+
+	//Merge the total returned quantity and total ordered quantity per product
+	order.products.forEach((oProd) => {
+		oProd.quantity = oProd.quantity - totalReturnedProducts[oProd.code];
+	});
 
 	res.status(200).json(order);
 };
