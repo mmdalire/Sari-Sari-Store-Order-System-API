@@ -275,7 +275,6 @@ export const getCustomerCredits = async (req, res, next) => {
 	try {
 		creditCount = await Order.countDocuments(findParams).exec();
 	} catch (err) {
-		console.log(err);
 		return next(
 			new HttpError(
 				"Cannot retrieve customer's credit information. Please try again later!",

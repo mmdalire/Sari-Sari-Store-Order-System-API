@@ -131,7 +131,7 @@ export const viewOrdersWithProduct = async (req, res, next) => {
 	const sortParams = () => {
 		switch (sort) {
 			case "createddate":
-				return "createdDate";
+				return "createddate";
 			case "pono":
 				return "poNo";
 			case "quantity":
@@ -228,10 +228,10 @@ export const viewOrdersWithProduct = async (req, res, next) => {
 						$multiply: ["$products.quantity", "$products.cost"],
 					},
 				},
-				createdDate: {
+				createddate: {
 					$first: "$createdDate",
 				},
-				updatedDate: {
+				updateddate: {
 					$first: "$updatedDate",
 				},
 			},
@@ -326,7 +326,7 @@ export const viewPrtWithProduct = async (req, res, next) => {
 	const sortParams = () => {
 		switch (sort) {
 			case "createddate":
-				return "createdDate";
+				return "createddate";
 			case "prtno":
 				return "prtNo";
 			case "price":
@@ -418,7 +418,7 @@ export const viewPrtWithProduct = async (req, res, next) => {
 						],
 					},
 				},
-				createdDate: {
+				createddate: {
 					$first: "$createdDate",
 				},
 			},
