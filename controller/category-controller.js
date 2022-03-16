@@ -18,6 +18,7 @@ export const createCategory = async (req, res, next) => {
 	try {
 		codeExists = await Category.findOne({
 			code: req.body.code.toUpperCase(),
+			isActive: true,
 			userId: mongoose.Types.ObjectId(req.userData.userId),
 		}).exec();
 	} catch (err) {

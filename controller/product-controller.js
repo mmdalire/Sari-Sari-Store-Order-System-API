@@ -22,6 +22,7 @@ export const createProduct = async (req, res, next) => {
 	try {
 		codeExists = await Product.findOne({
 			code: req.body.code.toUpperCase(),
+			isActive: true,
 			userId: mongoose.Types.ObjectId(req.userData.userId),
 		}).exec();
 	} catch (err) {
