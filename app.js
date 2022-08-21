@@ -15,6 +15,8 @@ import purchaseReturnRoute from "./routes/purchase-return-route.js";
 import userRoute from "./routes/user-route.js";
 dotenv.config();
 
+import { environment } from "./environment.js";
+
 const app = express();
 
 //Middlewares
@@ -47,7 +49,7 @@ app.use((error, req, res, next) => {
 });
 
 //Database connection
-const dbUrl = process.env.MONGO_URL;
+const dbUrl = environment.localhost.dbUrl;
 mongoose
 	.connect(dbUrl)
 	.then(() => {
