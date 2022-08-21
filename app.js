@@ -49,7 +49,7 @@ app.use((error, req, res, next) => {
 });
 
 //Database connection
-const dbUrl = environment.localhost.dbUrl;
+const dbUrl = environment.production.dbUrl;
 mongoose
 	.connect(dbUrl)
 	.then(() => {
