@@ -1,6 +1,6 @@
 import express from "express";
 
-import auth from "../middleware/auth.js";
+import auth from "../../middleware/auth.js";
 import {
 	createOrder,
 	getAllOrders,
@@ -8,7 +8,7 @@ import {
 	getOrderPrt,
 	editOrder,
 	cancelOrder,
-} from "../controller/order-controller.js";
+} from "../../controller/order-controller.js";
 
 const router = express.Router();
 

@@ -1,11 +1,11 @@
 import express from "express";
 
-import auth from "../middleware/auth.js";
+import auth from "../../middleware/auth.js";
 import {
 	analytics,
 	getTopProducts,
 	getTopCustomers,
-} from "../controller/dashboard-controller.js";
+} from "../../controller/dashboard-controller.js";
 
 const router = express.Router();
 

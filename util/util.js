@@ -1,3 +1,15 @@
+const makeAllFieldsUppercase = (data) => {
+	const transformedData = {};
+
+	for (let key in data) {
+		if (typeof data[key] === "string") {
+			transformedData[key] = data[key].trim().toUpperCase();
+		}
+	}
+
+	return transformedData;
+};
+
 /**
  * @desc Make the first letter of a string to be capitalized
  * @param {string} data - To be capitalized in first letter
@@ -12,16 +24,20 @@ export const capitalizeFirst = (data) => {
  * @param {array} data - If array, make all elements in uppercase
  * @returns {array}
  */
-export const makeUppercaseInArray = (data) => {
-	return data.map((d) => {
-		for (let key in d) {
-			if (typeof d[key] === "string") {
-				d[key] = d[key].trim().toUpperCase();
-			}
-		}
+export const makeUppercase = (data) => {
+	if (data === null) {
+		return null;
+	}
 
-		return d;
-	});
+	//Transform all fields in an array of objects to uppercase
+	if (Array.isArray(data)) {
+		return data.map((d) => makeAllFieldsUppercase(d));
+	}
+
+	//Transform all values in an object to uppercase
+	if (typeof data === "object" && data !== null) {
+		return makeAllFieldsUppercase(data);
+	}
 };
 
 /**
@@ -34,18 +50,13 @@ export const reformatJoiError = (error) => {
 	const message = details.message.split('"').pop();
 
 	let fieldName;
-	//If the error is within an array of objects (indicates the incorrect field in the object)
-	if (details.path.length > 2) {
+	//If the error is within an array of objects or the object itself,
+	//(indicates the incorrect field in the object)
+	if (details.path.length >= 2) {
 		fieldName = `${capitalizeFirst(details.path.pop())} in ${
 			details.path[0]
 		}`;
-	}
-	//If the error is within the array itself
-	else if (details.path.length === 2) {
-		fieldName = capitalizeFirst(details.path[0]);
-	}
-	//If any primitive types
-	else {
+	} else {
 		fieldName = capitalizeFirst(details.path.pop());
 	}
 

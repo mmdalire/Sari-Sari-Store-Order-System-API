@@ -1,6 +1,6 @@
 import express from "express";
 
-import auth from "../middleware/auth.js";
+import auth from "../../middleware/auth.js";
 import {
 	createCategory,
 	getAllCategories,
@@ -8,7 +8,7 @@ import {
 	getCategory,
 	editCategory,
 	deleteCategory,
-} from "../controller/category-controller.js";
+} from "../../controller/category-controller.js";
 
 const router = express.Router();
 

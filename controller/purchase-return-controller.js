@@ -5,7 +5,7 @@ import Order from "../model/order-model.js";
 import Product from "../model/product-model.js";
 import PurchaseReturn from "../model/purchase-return-model.js";
 import { purchaseReturnValidation } from "../util/purchase-return-validate.js";
-import { generateNumber, makeUppercaseInArray } from "../util/util.js";
+import { generateNumber, makeUppercase } from "../util/util.js";
 
 //Check if the returned quantity in each product is greater than the order quantity
 const validateReturnQuantity = (
@@ -290,7 +290,7 @@ export const createPurchaseReturn = async (req, res, next) => {
 	purchaseReturn = new PurchaseReturn({
 		prtNo: prtNumber,
 		order: order._id,
-		returnedProducts: makeUppercaseInArray(req.body.returnedProducts),
+		returnedProducts: makeUppercase(req.body.returnedProducts),
 		reason: req.body.reason.trim(),
 		userId: req.userData.userId,
 	});

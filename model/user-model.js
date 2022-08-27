@@ -29,19 +29,56 @@ const userSchema = new mongoose.Schema({
 		type: String,
 		required: true,
 	},
+	store: {
+		type: {
+			name: {
+				type: String,
+				required: true,
+			},
+			startingDate: {
+				type: Date,
+				required: true,
+			},
+		},
+		default: null,
+	},
+	address: {
+		lineNumber: {
+			type: String,
+			required: true,
+		},
+		barangay: {
+			type: String,
+			required: true,
+		},
+		city: {
+			type: String,
+			required: true,
+		},
+		province: {
+			type: String,
+			required: true,
+		},
+		country: {
+			type: String,
+			required: true,
+		},
+	},
 	password: {
 		type: String,
 		required: true,
 	},
-	createdDate: {
-		type: Date,
-		default: Date.now,
-	},
-	updatedDate: {
-		type: Date,
-	},
-	deactivatedDate: {
-		type: Date,
+	metadata: {
+		createdDate: {
+			type: Date,
+			default: Date.now,
+		},
+		updatedDate: {
+			type: Date,
+		},
+		deactivatedDate: {
+			type: Date,
+		},
 	},
 	isActive: {
 		type: Boolean,

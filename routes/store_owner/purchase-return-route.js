@@ -1,12 +1,12 @@
 import express from "express";
 
-import auth from "../middleware/auth.js";
+import auth from "../../middleware/auth.js";
 import {
 	createPurchaseReturn,
 	getAllPurchaseReturns,
 	getPurchaseReturn,
 	getPurchaseReturnByOrder,
-} from "../controller/purchase-return-controller.js";
+} from "../../controller/purchase-return-controller.js";
 
 const router = express.Router();
 

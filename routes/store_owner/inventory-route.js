@@ -5,8 +5,8 @@ import {
 	viewProduct,
 	viewOrdersWithProduct,
 	viewPrtWithProduct,
-} from "../controller/inventory-controller.js";
-import auth from "../middleware/auth.js";
+} from "../../controller/inventory-controller.js";
+import auth from "../../middleware/auth.js";
 
 const router = express.Router();
 

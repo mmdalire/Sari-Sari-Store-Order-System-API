@@ -7,7 +7,7 @@ import Product from "../model/product-model.js";
 import PurchaseReturn from "../model/purchase-return-model.js";
 
 import { orderValidation } from "../util/order-validate.js";
-import { generateNumber, makeUppercaseInArray } from "../util/util.js";
+import { generateNumber, makeUppercase } from "../util/util.js";
 
 //Check if the ordered quantity in each product is greater than the stock quantity
 const validateOrderQuantity = (enteredProducts, verifiedProducts) => {
@@ -140,7 +140,7 @@ export const createOrder = async (req, res, next) => {
 	order = new Order({
 		poNo: poNumber,
 		customer: req.body.customer.trim(),
-		products: makeUppercaseInArray(req.body.products),
+		products: makeUppercase(req.body.products),
 		credit: req.body.credit ? req.body.credit : 0,
 		status: req.body.status.trim().toUpperCase(),
 		remarks: req.body.remarks.trim(),
@@ -713,7 +713,7 @@ export const editOrder = async (req, res, next) => {
 	req.body.customer = req.body.customer.trim();
 
 	if (currentOrder.status === "DRAFT") {
-		req.body.products = makeUppercaseInArray(req.body.products);
+		req.body.products = makeUppercase(req.body.products);
 	}
 
 	req.body.status = req.body.status.trim().toUpperCase();
