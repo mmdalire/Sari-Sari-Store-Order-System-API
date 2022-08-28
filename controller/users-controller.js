@@ -81,6 +81,21 @@ const checkIfEmailExists = async (email, errorMessage, errorCode) => {
 	}
 };
 
+const checkIfStoreExists = async (storeName, errorMessage, errorCode) => {
+	let doesStoreNameExists;
+	try {
+		doesStoreNameExists = await User.findOne({
+			"store.name": storeName.toUpperCase(),
+		}).exec();
+	} catch (err) {
+		throw new Error("Signing up failed! Please try again later!", 500);
+	}
+
+	if (doesStoreNameExists) {
+		throw new Error(errorMessage, errorCode);
+	}
+};
+
 const retrieveUserIfExists = async (userRef, errorMessage, errorCode) => {
 	let user;
 
@@ -123,6 +138,15 @@ export const signup = async (req, res, next) => {
 			"An account with this email already exists! Choose a different email address!",
 			400
 		);
+
+		//Check if the store name has already been used
+		if (req.body.store) {
+			await checkIfStoreExists(
+				req.body.store.name,
+				"This store name has already been used! Choose a different one!",
+				400
+			);
+		}
 
 		//Encrypt password
 		hashedPassword = await encryptPassword(req.body.password);
