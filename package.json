@@ -7,7 +7,7 @@
 	"scripts": {
 		"start": "node app.js",
 		"dev": "nodemon app.js",
-		"test": "env-cmd -f ./test.env jest --watch"
+		"test": "env-cmd -f ./test.env jest --watch --detectOpenHandles"
 	},
 	"jest": {
 		"testEnvironment": "node"

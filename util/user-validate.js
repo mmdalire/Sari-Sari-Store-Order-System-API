@@ -12,9 +12,11 @@ export const signupValidation = (data) => {
 		lastName: Joi.string().required(),
 		middleInitial: Joi.string().allow(""),
 		email: Joi.string().required().email(),
-		gender: Joi.string().required(),
+		gender: Joi.string().valid("female", "male").required(),
 		birthdate: Joi.date().required(),
-		phoneNumber: Joi.string().required(),
+		phoneNumber: Joi.string()
+			.pattern(/^[0-9]+$/)
+			.required(),
 		store: Joi.object({
 			name: Joi.string().required(),
 			startingDate: Joi.date().required(),

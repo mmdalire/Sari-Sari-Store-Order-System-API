@@ -1,6 +1,4 @@
-import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
-import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
 import HttpError from "../model/http-error.js";
@@ -11,62 +9,13 @@ import {
 	passwordValidation,
 } from "../util/user-validate.js";
 import { makeUppercase } from "../util/util.js";
+import {
+	encryptPassword,
+	comparePassword,
+} from "../services/password-service.js";
+import { createAuthToken } from "../services/auth-service.js";
 
 dotenv.config();
-
-const encryptPassword = async (password) => {
-	let hashedPassword;
-	const salt = 12;
-	try {
-		hashedPassword = await bcrypt.hash(password, salt);
-	} catch (err) {
-		throw new HttpError("Cannot create user! Please try again!", 500);
-	}
-	return hashedPassword;
-};
-
-const comparePassword = async (actualPassword, expectedPassword) => {
-	let isValidPassword = false;
-	try {
-		isValidPassword = await bcrypt.compare(
-			actualPassword,
-			expectedPassword
-		);
-
-		if (!isValidPassword) {
-			throw new Error(
-				"Incorrect credentials! Please check and try again!",
-				401
-			);
-		}
-	} catch (err) {
-		if (err.name === "HttpError") {
-			throw new HttpError(
-				"Logging in failed! Please try again later!",
-				500
-			);
-		}
-		throw err;
-	}
-
-	return isValidPassword;
-};
-
-const createAuthToken = (userId) => {
-	let token;
-	try {
-		token = jwt.sign(
-			{
-				userId,
-			},
-			process.env.JSON_SECRET_KEY
-		);
-	} catch (err) {
-		throw new HttpError("Logging in failed! Please try again later!", 500);
-	}
-
-	return token;
-};
 
 const checkIfEmailExists = async (email, errorMessage, errorCode) => {
 	let doesEmailExists;
@@ -77,7 +26,7 @@ const checkIfEmailExists = async (email, errorMessage, errorCode) => {
 	}
 
 	if (doesEmailExists) {
-		throw new Error(errorMessage, errorCode);
+		throw new HttpError(errorMessage, errorCode);
 	}
 };
 
@@ -88,16 +37,35 @@ const checkIfStoreExists = async (storeName, errorMessage, errorCode) => {
 			"store.name": storeName.toUpperCase(),
 		}).exec();
 	} catch (err) {
-		throw new Error("Signing up failed! Please try again later!", 500);
+		throw new HttpError("Signing up failed! Please try again later!", 500);
 	}
 
 	if (doesStoreNameExists) {
-		throw new Error(errorMessage, errorCode);
+		throw new HttpError(errorMessage, errorCode);
 	}
 };
 
 const retrieveUserIfExists = async (userRef, errorMessage, errorCode) => {
 	let user;
+
+	//Check if user exists using ID
+	if (mongoose.Types.ObjectId.isValid(userRef)) {
+		if (String(new mongoose.Types.ObjectId(userRef))) {
+			try {
+				const id = mongoose.Types.ObjectId(userRef);
+				user = await User.findById(id).exec();
+			} catch (err) {
+				throw new HttpError(
+					"Signing up failed! Please try again later!",
+					500
+				);
+			}
+
+			if (user) {
+				return user;
+			}
+		}
+	}
 
 	//Check if user exists using email
 	try {
@@ -112,18 +80,7 @@ const retrieveUserIfExists = async (userRef, errorMessage, errorCode) => {
 		return user;
 	}
 
-	//Check if user exists using ID
-	try {
-		user = await User.findById(userRef).exec();
-	} catch (err) {
-		throw new HttpError("Signing up failed! Please try again later!", 500);
-	}
-
-	if (user) {
-		return user;
-	}
-
-	throw new Error(errorMessage, errorCode);
+	throw new HttpError(errorMessage, errorCode);
 };
 
 export const signup = async (req, res, next) => {
@@ -203,7 +160,7 @@ export const login = async (req, res, next) => {
 		const token = createAuthToken(id);
 
 		//Send response
-		return res.status(201).json({
+		return res.status(200).json({
 			userId: id,
 			firstName,
 			lastName,
