@@ -4,7 +4,9 @@ const makeAllFieldsUppercase = (data) => {
 	for (let key in data) {
 		if (typeof data[key] === "string") {
 			transformedData[key] = data[key].trim().toUpperCase();
+			continue;
 		}
+		transformedData[key] = data[key];
 	}
 
 	return transformedData;
