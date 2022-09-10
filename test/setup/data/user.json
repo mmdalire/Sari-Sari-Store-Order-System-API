@@ -1,0 +1,55 @@
+[
+	{
+		"firstName": "JOHN",
+		"lastName": "DOE",
+		"email": "jdoe@email.com",
+		"gender": "male",
+		"birthdate": "2000-01-20",
+		"phoneNumber": "4444555666",
+		"store": {
+			"name": "JOHN STORE",
+			"startingDate": "2010-02-02"
+		},
+		"address": {
+			"lineNumber": "BLK 1, LOT 1",
+			"barangay": "BRGY. LOS ANGELES",
+			"city": "CALIFORNIA",
+			"province": "TEXAS",
+			"country": "PHILIPPINES"
+		}
+	},
+	{
+		"firstName": "JANE",
+		"lastName": "DOE",
+		"email": "janedoe@email.com",
+		"gender": "female",
+		"birthdate": "2001-12-20",
+		"phoneNumber": "11113332222",
+		"store": {
+			"name": "JANE STORE",
+			"startingDate": "2011-02-03"
+		},
+		"address": {
+			"lineNumber": "BLK 2, LOT 3",
+			"barangay": "BRGY. SAN FRANCISCO",
+			"city": "TEXAS",
+			"province": "CALIFORNIA",
+			"country": "PHILIPPINES"
+		}
+	},
+	{
+		"firstName": "THOMAS",
+		"lastName": "DOE",
+		"email": "tdoe@email.com",
+		"gender": "female",
+		"birthdate": "2001-12-20",
+		"phoneNumber": "11113332222",
+		"address": {
+			"lineNumber": "BLK 12, LOT 32",
+			"barangay": "BRGY. NEW YORK",
+			"city": "CALIFORNIA",
+			"province": "BOSTON",
+			"country": "PHILIPPINES"
+		}
+	}
+]

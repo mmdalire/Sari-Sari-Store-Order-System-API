@@ -1,0 +1,35 @@
+[
+	{
+		"name": "CENTURY TUNA",
+		"category": "CANNED GOODS",
+		"description": null,
+		"code": "CGO-CTU",
+		"type": "countable",
+		"unit": "pieces",
+		"price": 20,
+		"cost": 15,
+		"quantity": 10
+	},
+	{
+		"name": "LIGO SARDINES",
+		"category": "CANNED GOODS",
+		"description": null,
+		"code": "GO-LSA",
+		"type": "countable",
+		"unit": "pieces",
+		"price": 25,
+		"cost": 20,
+		"quantity": 25
+	},
+	{
+		"name": "LUCKY ME CALAMANSI",
+		"category": "PANCIT CANTON",
+		"description": null,
+		"code": "PCA-LMC",
+		"type": "countable",
+		"unit": "packets",
+		"price": 14,
+		"cost": 10,
+		"quantity": 20
+	}
+]

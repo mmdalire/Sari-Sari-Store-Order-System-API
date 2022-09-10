@@ -1,8 +1,14 @@
 import request from "supertest";
 import app from "../express-setup.js";
 
-import { encryptPassword } from "../services/password-service.js";
-import { createAuthToken } from "../services/auth-service.js";
+import existingUsers from "./setup/data/user.json";
+
+import {
+	authenticateExistingUser,
+	createTestUser,
+	primaryTestEmail,
+	primaryTestPassword,
+} from "./setup/setup.js";
 
 import User from "../model/user-model.js";
 
@@ -28,48 +34,19 @@ const userTestRequest = {
 	password: "12345678",
 };
 
-const existingUser = {
-	firstName: "John",
-	lastName: "Doe",
-	email: "jdoe@email.com",
-	gender: "male",
-	birthdate: "2000-01-20",
-	phoneNumber: "4444555666",
-	store: {
-		name: "John's Store",
-		startingDate: "2010-02-02",
-	},
-	address: {
-		lineNumber: "Blk 1, Lot 1",
-		barangay: "Brgy. Los Angeles",
-		city: "California",
-		province: "Texas",
-		country: "Philippines",
-	},
-};
-
 const loginCredentialsForExistingUser = {
-	email: existingUser.email,
-	password: "12345678",
+	email: primaryTestEmail,
+	password: primaryTestPassword,
 };
 
-const authenticateExistingUser = async () => {
-	const { id: userId } = await User.findOne({
-		email: existingUser.email,
-	}).exec();
-
-	return createAuthToken(userId);
-};
+const primaryTestUser = existingUsers.find(
+	(user) => user.email === primaryTestEmail
+);
+primaryTestUser.password = primaryTestPassword;
 
 beforeEach(async () => {
 	await User.deleteMany().exec();
-
-	//Encrypt existing password
-	existingUser.password = await encryptPassword("12345678");
-
-	//Create a user for logged in testing
-	const loggedInUser = new User(existingUser);
-	await loggedInUser.save();
+	await createTestUser();
 });
 
 /** Test cases */
@@ -159,7 +136,7 @@ test(
 	async () => {
 		await request(app)
 			.post("/api/users/signup")
-			.send(existingUser)
+			.send(primaryTestUser)
 			.expect(400);
 	},
 	MAX_EXECUTE_TIME
@@ -327,7 +304,7 @@ test(
 	async () => {
 		await request(app)
 			.post("/api/users/signup")
-			.send(existingUser)
+			.send(primaryTestUser)
 			.expect(400);
 	},
 	MAX_EXECUTE_TIME

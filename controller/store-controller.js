@@ -35,7 +35,7 @@ export const getAllStores = async (req, res, next) => {
 				$toDate: "$store.startingDate",
 			},
 			owner: {
-				$concat: ["$firstName", "$lastName"],
+				$concat: ["$firstName", " ", "$lastName"],
 			},
 		});
 		pipeline.push(displayStage);
