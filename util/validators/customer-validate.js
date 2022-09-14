@@ -1,9 +1,11 @@
 import Joi from "joi";
+import HttpError from "../../model/http-error.js";
 
-import { reformatJoiError } from "./util.js";
+import { reformatJoiError } from "../util.js";
 
 export const customerValidation = (data) => {
 	const templateSchema = {
+		storeOwner: Joi.string().required(),
 		firstName: Joi.string().required(),
 		lastName: Joi.string().required(),
 		middleInitial: Joi.string().allow(""),
@@ -18,7 +20,7 @@ export const customerValidation = (data) => {
 	const { error } = schema.validate(data);
 
 	if (error) {
-		return reformatJoiError(error);
+		throw new HttpError(reformatJoiError(error), 422);
 	}
 	return;
 };

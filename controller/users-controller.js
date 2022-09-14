@@ -7,7 +7,7 @@ import {
 	signupValidation,
 	loginValidation,
 	passwordValidation,
-} from "../util/user-validate.js";
+} from "../util/validators/user-validate.js";
 import { makeUppercase } from "../util/util.js";
 import {
 	encryptPassword,

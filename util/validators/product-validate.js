@@ -1,6 +1,6 @@
 import Joi from "joi";
 
-import { reformatJoiError } from "./util.js";
+import { reformatJoiError } from "../util.js";
 
 export const productValidation = (
 	data,

@@ -5,6 +5,11 @@ const customerSchema = new mongoose.Schema({
 		type: String,
 		required: true,
 	},
+	storeOwner: {
+		type: mongoose.Types.ObjectId,
+		required: true,
+		ref: "user",
+	},
 	firstName: {
 		type: String,
 		required: true,

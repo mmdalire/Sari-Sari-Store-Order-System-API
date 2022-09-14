@@ -1,8 +1,8 @@
 import Joi from "joi";
 
-import HttpError from "../model/http-error.js";
+import HttpError from "../../model/http-error.js";
 
-import { reformatJoiError } from "./util.js";
+import { reformatJoiError } from "../util.js";
 
 const MIN_PASSWORD_LENGTH = 8;
 

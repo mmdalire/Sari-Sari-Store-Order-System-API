@@ -4,7 +4,7 @@ import HttpError from "../model/http-error.js";
 import Order from "../model/order-model.js";
 import Product from "../model/product-model.js";
 import PurchaseReturn from "../model/purchase-return-model.js";
-import { purchaseReturnValidation } from "../util/purchase-return-validate.js";
+import { purchaseReturnValidation } from "../util/validators/purchase-return-validate.js";
 import { generateNumber, makeUppercase } from "../util/util.js";
 
 //Check if the returned quantity in each product is greater than the order quantity

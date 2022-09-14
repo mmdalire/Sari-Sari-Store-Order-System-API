@@ -8,7 +8,7 @@ import {
 	productValidation,
 	restockProductValidation,
 	priceAndCostValidation,
-} from "../util/product-validate.js";
+} from "../util/validators/product-validate.js";
 
 export const createProduct = async (req, res, next) => {
 	//Server validation

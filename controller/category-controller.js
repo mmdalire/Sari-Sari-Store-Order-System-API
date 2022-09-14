@@ -4,7 +4,7 @@ import HttpError from "../model/http-error.js";
 import Category from "../model/category-model.js";
 import Product from "../model/product-model.js";
 
-import { categoryValidation } from "../util/category-validate.js";
+import { categoryValidation } from "../util/validators/category-validate.js";
 
 export const createCategory = async (req, res, next) => {
 	//Server side validation

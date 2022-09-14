@@ -6,7 +6,7 @@ import Order from "../model/order-model.js";
 import Product from "../model/product-model.js";
 import PurchaseReturn from "../model/purchase-return-model.js";
 
-import { orderValidation } from "../util/order-validate.js";
+import { orderValidation } from "../util/validators/order-validate.js";
 import { generateNumber, makeUppercase } from "../util/util.js";
 
 //Check if the ordered quantity in each product is greater than the stock quantity

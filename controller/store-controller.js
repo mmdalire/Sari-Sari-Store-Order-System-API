@@ -9,7 +9,7 @@ import {
 	projectStage,
 	paginationStage,
 	limitStage,
-} from "../services/aggregation-pipeline-service.js";
+} from "../util/mongodb-util.js";
 
 export const getAllStores = async (req, res, next) => {
 	let stores;
