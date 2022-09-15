@@ -210,7 +210,7 @@ export const getAllCustomers = async (req, res, next) => {
 
 	try {
 		const matchActiveCustomersStage = matchStage({
-			userId: mongoose.Types.ObjectId(req.userData.userId),
+			storeOwner: mongoose.Types.ObjectId(req.userData.userId),
 			isActive: true,
 			isBlacklisted: "isBlacklisted" in req.query,
 		});
@@ -330,7 +330,7 @@ export const getCustomerCredits = async (req, res, next) => {
 		isActive: true,
 		status: "SUBMIT",
 		customer: customerId,
-		userId: req.userData.userId,
+		storeOwner: req.userData.userId,
 	};
 	const sortField = {
 		createddate: "createdDate",
@@ -370,7 +370,7 @@ export const getCustomerCredits = async (req, res, next) => {
 			isActive: true,
 			status: "SUBMIT",
 			customer: mongoose.Types.ObjectId(customerId),
-			userId: mongoose.Types.ObjectId(req.userData.userId),
+			storeOwner: mongoose.Types.ObjectId(req.userData.userId),
 		});
 		pipeline.push(activeOrderStage);
 
@@ -420,7 +420,7 @@ export const editCustomer = async (req, res, next) => {
 		await isCustomerOwned(req.userData.userId, customerId);
 
 		//Server side validation
-		customerValidation(req.body);
+		customerValidation(req.body, "edit");
 
 		//Update customer
 		req.body.firstName = req.body.firstName.trim().toUpperCase();

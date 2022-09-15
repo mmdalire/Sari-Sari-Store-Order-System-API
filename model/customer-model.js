@@ -67,7 +67,7 @@ customerSchema.statics.ownershipValidation = async (userId, customerId) => {
 	const customer = await Customer.findById(customerId).exec();
 
 	//Cannot delete other user's customers
-	if (userId !== customer.userId.toString()) {
+	if (userId !== customer.storeOwner.toString()) {
 		throw new Error();
 	}
 
