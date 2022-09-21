@@ -1,0 +1,29 @@
+[
+	{
+		"firstName": "WANDA",
+		"lastName": "MAXIMOFF",
+		"middleInitial": "W",
+		"email": "wmaximoff@email.com",
+		"phoneNumber": "99991112222",
+		"birthdate": "1984-05-16T00:00:00.000Z",
+		"address": "Some address"
+	},
+	{
+		"firstName": "PIETRO",
+		"lastName": "MAXIMOFF",
+		"middleInitial": "X",
+		"email": "pmaximoff@email.com",
+		"phoneNumber": "88882228888",
+		"birthdate": "1978-05-16T00:00:00.000Z",
+		"address": "Some address 2"
+	},
+	{
+		"firstName": "TONY",
+		"lastName": "STARK",
+		"middleInitial": "A",
+		"email": "tstark@email.com",
+		"phoneNumber": "2222333355",
+		"birthdate": "2000-05-16T00:00:00.000Z",
+		"address": "Some address 3"
+	}
+]

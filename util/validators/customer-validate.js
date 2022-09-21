@@ -4,6 +4,10 @@ import HttpError from "../../model/http-error.js";
 import { reformatJoiError } from "../util.js";
 
 export const customerValidation = (data, type = "create") => {
+	if (!data) {
+		throw new HttpError("Customer must not be empty", 422);
+	}
+
 	const templateSchema = {
 		firstName: Joi.string().required(),
 		lastName: Joi.string().required(),
@@ -11,7 +15,7 @@ export const customerValidation = (data, type = "create") => {
 		email: Joi.string().required().email(),
 		phoneNumber: Joi.string().required(),
 		birthdate: Joi.date().required(),
-		address: Joi.required(),
+		address: Joi.string().required(),
 		userId: Joi.string().required(),
 	};
 

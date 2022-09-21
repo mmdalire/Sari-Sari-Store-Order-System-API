@@ -29,7 +29,10 @@ const retrieveCustomer = async (customerId, errorMessage, errorCode) => {
 	try {
 		customer = await Customer.findById(customerId).exec();
 	} catch (err) {
-		throw new HttpError("Signing up failed! Please try again later!", 500);
+		throw new HttpError(
+			"Cannot retrieve customer! Please try again later!",
+			500
+		);
 	}
 
 	if (!customer) {

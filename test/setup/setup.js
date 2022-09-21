@@ -3,11 +3,13 @@ import Category from "../../model/category-model";
 import Product from "../../model/product-model";
 
 import existingUsers from "../setup/data/user.json";
+import existingCustomers from "../setup/data/customer.json";
 import existingCategories from "../setup/data/category.json";
 import existingProducts from "../setup/data/product.json";
 
 import { encryptPassword } from "../../services/password-service.js";
 import { createAuthToken } from "../../services/auth-service.js";
+import Customer from "../../model/customer-model";
 
 export const primaryTestEmail = "jdoe@email.com";
 export const primaryTestPassword = "12345678";
@@ -23,6 +25,17 @@ export const createTestUser = async () => {
 	const users = await User.insertMany(createdUsers);
 	const { _id: id } = users.find((user) => user.email === primaryTestEmail);
 	return id.toString();
+};
+
+export const createTestCustomer = async (userId) => {
+	const customers = existingCustomers.map((customer, index) => ({
+		...customer,
+		customerNo: `CRM202209-000${index + 1}`,
+		storeOwner: userId,
+		userId,
+	}));
+
+	await Customer.insertMany(customers);
 };
 
 export const createTestCategory = async (userId) => {
