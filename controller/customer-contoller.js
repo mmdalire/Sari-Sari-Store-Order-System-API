@@ -42,25 +42,6 @@ const retrieveCustomer = async (customerId, errorMessage, errorCode) => {
 	return customer;
 };
 
-const getLatestCustomerNumber = async (userId) => {
-	let customer;
-	try {
-		customer = await Customer.findOne({ userId })
-			.sort({ createdDate: -1 })
-			.limit(1)
-			.exec();
-	} catch (err) {
-		return next(
-			new HttpError(
-				"Cannot create customer information. Please try again later!",
-				500
-			)
-		);
-	}
-
-	return customer ? customer.customerNo : null;
-};
-
 const getCustomerCreditCount = async (findParams) => {
 	try {
 		const creditCount = await Order.countDocuments(findParams).exec();
@@ -151,7 +132,7 @@ export const createCustomer = async (req, res, next) => {
 		//Generate customer number
 		const customerNumber = generateNumber(
 			"customer",
-			await getLatestCustomerNumber(req.userData.userId)
+			await Customer.getLatestCustomerNumber(req.body.storeOwner)
 		);
 
 		//Save customer information

@@ -69,13 +69,30 @@ customerSchema.statics.isCustomerExists = async (customerId) => {
 	return customer ? true : false;
 };
 
+//For retrieving the latest customer number
+customerSchema.statics.getLatestCustomerNumber = async (storeOwnerId) => {
+	try {
+		const customer = await Customer.findOne({ storeOwner: storeOwnerId })
+			.sort({ createdDate: -1 })
+			.limit(1)
+			.exec();
+
+		return customer ? customer.customerNo : null;
+	} catch (err) {
+		throw new HttpError(
+			"Cannot create customer information. Please try again later!",
+			500
+		);
+	}
+};
+
 //For ownership validation in every update and delete customer
 customerSchema.statics.ownershipValidation = async (userId, customerId) => {
 	const customer = await Customer.findById(customerId).exec();
 
 	//Cannot delete or update other user's customers
 	if (userId !== customer.storeOwner.toString()) {
-		throw new Error();
+		throw new HttpError("Unauthorized access to this operation!", 401);
 	}
 
 	return true;
