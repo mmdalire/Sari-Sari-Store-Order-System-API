@@ -62,11 +62,18 @@ const customerSchema = new mongoose.Schema({
 	},
 });
 
+//For validation if the customer exists
+customerSchema.statics.isCustomerExists = async (customerId) => {
+	const customer = await Customer.findById(customerId).exec();
+
+	return customer ? true : false;
+};
+
 //For ownership validation in every update and delete customer
 customerSchema.statics.ownershipValidation = async (userId, customerId) => {
 	const customer = await Customer.findById(customerId).exec();
 
-	//Cannot delete other user's customers
+	//Cannot delete or update other user's customers
 	if (userId !== customer.storeOwner.toString()) {
 		throw new Error();
 	}
